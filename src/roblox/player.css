@@ -1,0 +1,216 @@
+/* "In game" beat: the 3D player card, its trace into the copy, and the presence badge animations. Namespaced pl-, in
+   @layer components so utilities still win. Colours/curves/durations are the site's tokens (styles/global.css). */
+@layer components {
+  /* Per-breakpoint sizes in one place. --pl-card: the 4:5 card's width (the sizes SPEC §7 validated: 358 fluid / 400 /
+     460 / 520 wide). --pl-ped: pedestal height above the card's bottom edge (14 % of its height). --pl-gap: the grid's
+     column gap, so the trace can cross it. --pl-pb: bottom padding that lines the readout's "Plays as" row up with the
+     trace's end (tuned against screenshots; the trace's 24 px jog absorbs a few px of error). */
+  .pl-section {
+    --pl-card: 25rem;
+    --pl-ped: 70px;
+    --pl-gap: 24px;
+    --pl-pb: 0px;
+    /* Pedestal light spilling onto the page; stacked layouts have the card centred above the copy. */
+    background-image: radial-gradient(28% 22% at 50% 62%, rgb(255 194 71 / 0.07), transparent 70%);
+  }
+  @media (width >= 48rem) {
+    .pl-section {
+      --pl-pb: 0px;
+      background-image: radial-gradient(28% 22% at 22% 82%, rgb(255 194 71 / 0.07), transparent 70%);
+    }
+  }
+  @media (width >= 80rem) {
+    /* "Plays as" is 70 px above the copy's bottom edge when the copy has no padding (two 20 px rows + 16 px gap + 10). */
+    .pl-section { --pl-card: 28.75rem; --pl-ped: 80.5px; --pl-gap: 32px; --pl-pb: calc(var(--pl-ped) - 70px); }
+  }
+  @media (width >= 120rem) {
+    .pl-section { --pl-card: 32.5rem; --pl-ped: 91px; }
+  }
+
+  /* ── grid ───────────────────────────────────────────────────────────────────────────────────────── */
+  .pl-grid { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .pl-cell { display: flex; flex-direction: column; min-width: 0; }
+  .pl-copy { min-width: 0; margin-top: 8px; }
+  /* Label/value pairs share one pair of columns (subgrid), so both values start at the same x. */
+  .pl-readout { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 24px; row-gap: 16px; }
+  .pl-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; }
+  @media (width >= 48rem) {
+    .pl-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: var(--pl-gap); align-items: end; }
+    .pl-cell { grid-column: 1 / span 4; flex-direction: row; align-items: stretch; }
+    .pl-copy { grid-column: 5 / span 2; margin-top: 0; padding-bottom: var(--pl-pb); }
+    /* The copy column is only two grid columns wide here, so label over value. The last row keeps room for two lines of
+       value however wide the column is, which pins the "Plays as" row above it (the trace aims at that row). */
+    .pl-readout { grid-template-columns: minmax(0, 1fr); }
+    .pl-row:last-child { min-height: 60px; }
+  }
+  @media (width >= 80rem) {
+    .pl-readout { grid-template-columns: max-content minmax(0, 1fr); }
+    .pl-row:last-child { min-height: 0; }
+    .pl-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .pl-cell { grid-column: 1 / span 6; }
+    .pl-copy { grid-column: 7 / span 6; }
+  }
+
+  /* ── card ───────────────────────────────────────────────────────────────────────────────────────── */
+  .pl-card {
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+    width: 100%;
+    max-width: 25rem;
+    aspect-ratio: 4 / 5;
+    border-radius: var(--radius-card);
+    /* amber pool under the pedestal */
+    background: radial-gradient(120% 70% at 50% 100%, rgb(255 194 71 / 0.1), transparent 60%), var(--color-iron-900);
+    box-shadow: var(--shadow-hairline);
+    transition: box-shadow 100ms var(--ease-out);
+  }
+  .pl-card:hover { box-shadow: var(--shadow-hairline-strong); }
+  @media (width >= 48rem) {
+    .pl-card { flex: 0 1 var(--pl-card); max-width: var(--pl-card); align-self: flex-end; }
+  }
+  /* Layers: canvas / poster < scrims (1) < label + bubble (2) < actions (3). */
+  .pl-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      linear-gradient(to bottom, rgb(10 13 22 / 0.92) 0, rgb(10 13 22 / 0.55) 48px, rgb(10 13 22 / 0) 80px),
+      linear-gradient(to top, rgb(10 13 22 / 0.7) 0, rgb(10 13 22 / 0) 84px);
+  }
+  .pl-stage { position: absolute; inset: 0; }
+  .pl-stage canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    /* Near-instant on purpose: a long fade would hide the entrance scan under partial opacity. */
+    opacity: 0;
+    transition: opacity 120ms linear;
+  }
+  .pl-card[data-state="live"] .pl-stage canvas { opacity: 1; }
+
+  /* The 2D render. The card's aspect-ratio reserves the space, so nothing here can shift layout. */
+  .pl-poster {
+    position: absolute;
+    left: 50%;
+    bottom: 64px;
+    height: 84%;
+    aspect-ratio: 300 / 440;
+    transform: translateX(-50%);
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  .pl-poster img { display: block; width: 100%; height: 100%; }
+  .pl-card[data-state="live"] .pl-poster { opacity: 0; }
+
+  .pl-label {
+    position: absolute;
+    z-index: 2;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    pointer-events: none;
+  }
+  .pl-actions {
+    position: absolute;
+    z-index: 3;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  @media (width >= 48rem) {
+    .pl-label { top: 24px; left: 24px; right: 24px; }
+    .pl-actions { left: 24px; right: 24px; bottom: 24px; }
+  }
+  /* Readable over the pedestal glow. The underline TextLink already carries stays: colour alone is no affordance. */
+  .pl-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 48px;
+    padding-inline: 8px;
+    text-shadow: 0 0 12px var(--color-iron-950), 0 0 4px var(--color-iron-950);
+  }
+  /* Without JS the button cannot work (html.js is set by an inline script in index.html). */
+  html:not(.js) .pl-hi { display: none; }
+
+  /* "hi!" bubble: opacity only (plus a spring settle when motion is allowed); never affects layout. */
+  .pl-bubble {
+    position: absolute;
+    z-index: 2;
+    top: 22%;
+    left: 9%;
+    margin: 0;
+    padding: 4px 8px;
+    border-radius: var(--radius-pad);
+    font: 500 0.75rem/1rem var(--font-mono);
+    letter-spacing: var(--tracking-label);
+    color: var(--color-iron-950);
+    background: var(--color-amber-400);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  .pl-card[data-waving] .pl-bubble { opacity: 1; }
+  @media (prefers-reduced-motion: no-preference) {
+    .pl-bubble { transform: translateY(4px); transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-spring) var(--ease-spring); }
+    .pl-card[data-waving] .pl-bubble { transform: none; }
+  }
+
+  /* ── presence badge ─────────────────────────────────────────────────────────────────────────────── */
+  .pl-fade { animation: pl-fade var(--dur-fast) var(--ease-out) both; }
+  @keyframes pl-fade { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: no-preference) {
+    .pl-breathe { animation: pl-breathe 2.4s ease-in-out infinite; }
+  }
+  @keyframes pl-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  /* ── trace ──────────────────────────────────────────────────────────────────────────────────────── */
+  .pl-trace { position: relative; }
+  .pl-trace svg { overflow: visible; }
+  .pl-trace .pl-base { stroke: var(--color-iron-600); stroke-width: 1.5; }
+  /* Pads: a zero-length round-capped path = a perfect circle at any stretch (non-scaling stroke). */
+  .pl-trace .pl-pad-ring,
+  .pl-trace .pl-pad-fill { vector-effect: non-scaling-stroke; stroke-linecap: round; transition: stroke var(--dur-base) var(--ease-out); }
+  .pl-trace .pl-pad-ring { stroke: var(--color-iron-600); stroke-width: 9px; }
+  .pl-trace .pl-pad-fill { stroke: var(--color-iron-900); stroke-width: 6px; }
+  .pl-trace[data-pulse="wave"] .pl-pad-ring { stroke: var(--color-amber-400); }
+  .pl-trace[data-pulse="presence"] .pl-pad-ring { stroke: rgb(62 224 208 / 0.6); }
+  .pl-trace .pl-pulse {
+    stroke-width: 1.5;
+    stroke-dasharray: 0.14 2;
+    stroke-dashoffset: 0.14;
+    opacity: 0;
+  }
+  .pl-trace[data-pulse="wave"] .pl-pulse { stroke: var(--color-amber-400); }
+  .pl-trace[data-pulse="presence"] .pl-pulse { stroke: rgb(62 224 208 / 0.6); }
+  @media (prefers-reduced-motion: no-preference) {
+    /* ct-pulse lives in contact/contact.css (one stylesheet in the bundle): same keyframes, same 900 ms. */
+    .pl-trace .pl-pulse { animation: ct-pulse 900ms var(--ease-out) both; }
+  }
+
+  /* Phones: a 48 px drop under the card's centre. */
+  .pl-trace .pl-trace-wide { display: none; }
+  .pl-trace .pl-trace-tall { display: block; width: 100%; max-width: 25rem; height: 48px; }
+  .pl-trace-tall .pl-base, .pl-trace-tall .pl-pulse { stroke-linecap: round; }
+  @media (width >= 48rem) {
+    .pl-trace { flex: 1 1 0; min-width: 0; /* ends 14 px short of the copy so the pad doesn't touch "Plays as" */ margin-right: calc(var(--pl-gap) * -1 + 14px); }
+    .pl-trace .pl-trace-tall { display: none; }
+    /* Stretches across whatever the card leaves free; the start pad sits on the pedestal (14 % up), the jog drops 24 px. */
+    /* md: the stacked readout puts "Plays as" ABOVE pedestal height, so the jog is mirrored and climbs 36 px (the SVG is
+       stretched 1.5x vertically, hence the thinner stroke); xl un-mirrors it to a 24 px drop. */
+    .pl-trace .pl-trace-wide { display: block; position: absolute; left: 0; width: 100%; height: 72px; bottom: calc(14% - 18px); transform: scaleY(-1); }
+    .pl-trace-wide .pl-base, .pl-trace-wide .pl-pulse { stroke-width: 1; }
+  }
+  @media (width >= 80rem) {
+    .pl-trace .pl-trace-wide { height: 48px; bottom: calc(14% - 36px); transform: none; }
+    .pl-trace-wide .pl-base, .pl-trace-wide .pl-pulse { stroke-width: 1.5; }
+  }
+}

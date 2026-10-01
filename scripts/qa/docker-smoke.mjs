@@ -19,6 +19,7 @@ const keep = flag('--keep');
 const port = Number(option('--port', '8080'));
 const IMAGE = 'mrh-lol:qa';
 const NAME = 'mrh-lol-qa';
+const NET = 'mrh-lol-qa-net';
 const base = `http://127.0.0.1:${port}`;
 
 const docker = (a, opts = {}) => spawnSync('docker', a, { stdio: 'inherit', ...opts });
@@ -51,6 +52,7 @@ function check(name, ok, detail = '') {
 function cleanup() {
   if (keep) return;
   docker(['rm', '-f', NAME], { stdio: 'ignore' });
+  docker(['network', 'rm', NET], { stdio: 'ignore' });
 }
 
 if (spawnSync('docker', ['version'], { stdio: 'ignore' }).status !== 0) {
@@ -69,7 +71,10 @@ if (!flag('--no-build')) {
 }
 
 docker(['rm', '-f', NAME], { stdio: 'ignore' }); // a previous --keep run
-const run = docker(['run', '-d', '--name', NAME, '-p', `${port}:80`, IMAGE], { stdio: ['ignore', 'pipe', 'inherit'] });
+// A user-defined network, like Coolify's: only there does Docker's embedded DNS (127.0.0.11, the first resolver in
+// nginx.conf's presence proxy) exist. On the default bridge it refuses connections and presence lookups fail.
+docker(['network', 'create', NET], { stdio: 'ignore' });
+const run = docker(['run', '-d', '--name', NAME, '--network', NET, '-p', `${port}:80`, IMAGE], { stdio: ['ignore', 'pipe', 'inherit'] });
 if (run.status !== 0) {
   console.error(`docker run failed (is port ${port} already in use?)`);
   process.exit(1);
@@ -145,6 +150,41 @@ try {
   ]) {
     const r = await get(path);
     check(`GET ${path} → 200 ${type.source.replace(/\\/g, '')}`, r.status === 200 && type.test(r.headers['content-type'] ?? ''), `${r.status} ${r.headers['content-type']} ${r.body.length} B`);
+  }
+
+  // 3D avatar assets and the presence proxy (nginx.conf; docs/PLAYER_INTEGRATION.md §5).
+  const manifest = await get('/roblox/avatar.json', { 'Accept-Encoding': 'gzip' });
+  check('/roblox/avatar.json → no-cache', manifest.status === 200 && manifest.headers['cache-control'] === 'no-cache', `${manifest.status} ${manifest.headers['cache-control']}`);
+  let binUrl = null;
+  try { binUrl = JSON.parse(manifest.body.toString()).bin.url; } catch { /* reported below */ }
+  if (!binUrl) check('avatar.json names a .bin', false);
+  else {
+    const bin = await get(`/roblox/${binUrl}`, { 'Accept-Encoding': 'gzip' });
+    check(`/roblox/${binUrl} → immutable + gzip`, bin.status === 200 && /immutable/.test(bin.headers['cache-control'] ?? '') && bin.headers['content-encoding'] === 'gzip', `${bin.wire} B on the wire for ${bin.body.length} B`);
+  }
+  const tex = /"url":"(tex\/[^"]+)"/.exec(manifest.body.toString())?.[1];
+  if (tex) {
+    const t = await get(`/roblox/${tex}`);
+    check(`/roblox/${tex} → immutable`, t.status === 200 && /immutable/.test(t.headers['cache-control'] ?? ''), t.headers['cache-control']);
+  }
+  const poster = await get('/roblox/fallback/avatar-300x440.avif');
+  check('/roblox/fallback/* → 200, default (1 day) cache', poster.status === 200 && poster.headers['cache-control'] === 'public, max-age=86400', `${poster.status} ${poster.headers['cache-control']}`);
+
+  const pres = await get('/api/roblox-presence');
+  let presJson = null;
+  try { presJson = JSON.parse(pres.body.toString()); } catch { /* may be offline */ }
+  // 200 with Roblox's payload when the container has internet; a 502/504 (no stale copy yet) is acceptable offline.
+  check('/api/roblox-presence → no-store, Roblox payload or 5xx', pres.headers['cache-control'] === 'no-store' && (pres.status === 200 ? Array.isArray(presJson?.userPresences) : pres.status >= 500), `${pres.status} ${pres.headers['cache-control']}`);
+  check('/api/roblox-presence keeps the security headers (no add_header in its location)', pres.headers['x-content-type-options'] === 'nosniff' && pres.headers['x-frame-options'] === 'DENY');
+  check('/api/roblox-presence sends no Set-Cookie', !pres.headers['set-cookie']);
+  const post = await new Promise((resolve, reject) => {
+    const req = http.request(`${base}/api/roblox-presence`, { method: 'POST', headers: { 'content-type': 'application/json' } }, (res) => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+    req.on('error', reject); req.end('{"userIds":[1]}');
+  });
+  check('POST /api/roblox-presence is refused (GET only)', post === 403, String(post));
+  if (pres.status === 200) {
+    const again = await get('/api/roblox-presence?userIds=1');
+    check('second request is served from the nginx cache (same body, query ignored)', again.status === 200 && again.body.equals(pres.body), String(again.status));
   }
 
   const inspect = spawnSync('docker', ['inspect', '--format', '{{.State.Health.Status}}', NAME], { encoding: 'utf8' });

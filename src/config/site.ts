@@ -5,7 +5,7 @@
 // • EDITABLE  = copy the owner delegated ("you decide", "along those lines") — change freely.
 // • Keep this file free of runtime imports: scripts/gen-assets.mjs imports it directly with Node.
 // ─────────────────────────────────────────────────────────────────────────────────────────────
-import type { AtlasStatKey, AtlasStats, Project } from '../data/types';
+import type { AtlasStatKey, AtlasStats, Project } from '../data/types.ts'; // with extension: vite.config.ts loads this file natively (Node ESM)
 
 export interface ImageSet { avif: string; webp: string; png: string }
 export interface AvatarConfig {
@@ -19,6 +19,28 @@ export interface AvatarConfig {
   alt: string;
 }
 export interface Channel { label: string; handle: string; href: string }
+/** What the Roblox card says about the owner's live status. 'status' never names the game; 'off' never fetches. */
+export type PresenceMode = 'game' | 'status' | 'off';
+export interface RobloxConfig {
+  username: string;
+  /** Mirrored by hand in nginx.conf (fixed POST body): change both together. vite.config.ts reads this one. */
+  userId: number;
+  profileUrl: string;
+  presence: PresenceMode;
+  presenceEndpoint: string;
+  /** Folder with avatar.json, the hashed .bin/textures and fallback/ images. Ends with '/'. */
+  assetsBase: string;
+  card: {
+    kicker: string;
+    /** Shown whenever there is no real presence data (loading, error, 'off'). Never a guess. */
+    neutralBadge: string;
+    sayHi: string;
+    viewProfile: string;
+    viewGame: string;
+    posterAlt: string;
+  };
+  copy: { line: string; sub: string; builtFor: string };
+}
 export interface StatTile {
   key: AtlasStatKey;
   /** Text after the number. `{statKey}` placeholders are replaced with formatted numbers, e.g. '{npcs}'. */
@@ -38,7 +60,8 @@ export interface SiteConfig {
     secondaryCta: { label: string; href: string };
     scrollHint: string;
   };
-  sections: Record<'about' | 'work' | 'contact', { id: string; index: string; title: string }>;
+  sections: Record<'about' | 'player' | 'work' | 'contact', { id: string; index: string; title: string }>;
+  roblox: RobloxConfig;
   flagship: {
     slug: string;
     title: string;
@@ -116,8 +139,33 @@ export const site: SiteConfig = {
 
   sections: {
     about: { id: 'about', index: '01', title: 'Who I am' },
-    work: { id: 'work', index: '02', title: "What I've built" },
-    contact: { id: 'contact', index: '03', title: 'Get in touch' },
+    player: { id: 'player', index: '02', title: 'In game' },
+    work: { id: 'work', index: '03', title: "What I've built" },
+    contact: { id: 'contact', index: '04', title: 'Get in touch' },
+  },
+
+  // The live 3D avatar beat (src/roblox/, docs/PLAYER_INTEGRATION.md). Assets are built by `npm run roblox:build`.
+  roblox: {
+    username: 'MrHarold0011',
+    userId: 1113999731,
+    profileUrl: 'https://www.roblox.com/users/1113999731/profile',
+    // TODO(me): how much of your Roblox status should the site show?
+    //   'status' = online / in game / offline, never the game name (current default)
+    //   'game'   = also the game name and a "View game" link while you are in a game
+    //   'off'    = no presence at all (the badge stays neutral and nothing is fetched)
+    presence: 'status',
+    presenceEndpoint: '/api/roblox-presence', // proxied same-origin by nginx.conf and vite.config.ts (Roblox sends no CORS)
+    assetsBase: '/roblox/',
+    card: {
+      kicker: 'Player 1',
+      neutralBadge: 'Main · Roblox',
+      sayHi: 'Say hi',
+      viewProfile: 'View on Roblox',
+      viewGame: 'View game',
+      posterAlt: "MrHarold's Roblox avatar: curved black horns, messy black hair, a skull-teeth mask, a black skull-print sweater, one white and one black wing with violet lightning.",
+    },
+    // EDITABLE: placeholder copy. `builtFor` is "<game> → <project>"; the project half links to the Work section.
+    copy: { line: 'Same me. More horns.', sub: 'Drag me around — I wave back.', builtFor: 'Prospecting! → Prospecting Atlas' },
   },
 
   flagship: {
@@ -174,13 +222,13 @@ export const site: SiteConfig = {
     intro: 'Discord is the fastest way to reach me.', // EDITABLE — owner made Discord the primary route
     discord: {
       handle: 'makogai',
-      altHandle: 'mrharold01',
+      altHandle: 'mrharold01', // a SECOND DISCORD account, not Roblox (the Roblox name is MrHarold0011): keep the two apart
       // Discord profile URLs need numeric IDs, so the primary action is "copy handle".
       serverInvite: null, // TODO(me): e.g. 'https://discord.gg/xxxx' — shows "Join the server" when set
     },
     email: 'contact@mrh.lol', // owner: "for now use contact@mrh.lol"
     github: { label: 'GitHub', handle: 'Makogai', href: 'https://github.com/Makogai' },
-    roblox: null, // TODO(me): { label: 'Roblox', handle: '<username>', href: 'https://www.roblox.com/users/<id>/profile' }
+    roblox: { label: 'Roblox', handle: 'MrHarold0011', href: 'https://www.roblox.com/users/1113999731/profile' }, // mirrors `roblox` above
     twitter: null, // TODO(me): not provided
     youtube: null, // TODO(me): not provided
     twitch: null, // TODO(me): not provided
