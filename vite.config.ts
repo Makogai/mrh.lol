@@ -16,7 +16,7 @@ function preloadDisplayFont(): Plugin {
     transformIndexHtml: {
       order: 'post',
       handler(_html, ctx) {
-        const file = Object.keys(ctx.bundle ?? {}).find((f) => /mona-sans-latin-wdth-normal-[\w-]+\.woff2$/.test(f));
+        const file = Object.keys(ctx.bundle ?? {}).find((f) => /mona-sans-site-[\w-]+\.woff2$/.test(f));
         if (!file) return [];
         return [{ tag: 'link', attrs: { rel: 'preload', as: 'font', type: 'font/woff2', href: `/${file}`, crossorigin: '' }, injectTo: 'head' }];
       },

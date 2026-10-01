@@ -16,7 +16,7 @@ export function StatStrip() {
     <ul
       ref={ref}
       data-reveal=""
-      className="sec-stats grid grid-cols-2 gap-px overflow-clip rounded-pad bg-ink-100/8 p-px md:grid-cols-3 xl:grid-cols-6"
+      className="sec-stats grid grid-cols-2 gap-px overflow-clip rounded-pad bg-ink-100/8 md:grid-cols-3 xl:grid-cols-6"
     >
       {site.flagship.stats.map((tile, i) => (
         <li key={tile.key} className="sec-stat flex flex-col gap-3 bg-iron-900 p-4 md:p-6" style={{ '--i': Math.min(i, 6) } as CSSProperties}>

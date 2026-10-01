@@ -284,7 +284,8 @@ async function buildOg() {
   const brand = await shape({ file: MARTIAN, text: hostLabel, axes: { wght: 500 }, size: 22, tracking: 0.14, x: 72, baseline: 84 });
   const tags = await shape({ file: MARTIAN, text: interests, axes: { wght: 500 }, size: 16, tracking: 0.08, x: 1128, baseline: 84, anchor: 'end' });
   const name = await shape({ file: MONA, text: site.displayName, axes: { wdth: 125, wght: 850 }, size: 150, tracking: -0.045, x: 72, baseline: 500 });
-  const ident = await shape({ file: MONA, text: site.identity, axes: { wdth: 100, wght: 500 }, size: 34, x: 72, baseline: 556 });
+  // The identity may hold an NBSP (a DOM line-break hint); the outline pipeline wants a plain space.
+  const ident = await shape({ file: MONA, text: site.identity.replace(/\u00a0/g, ' '), axes: { wdth: 100, wght: 500 }, size: 34, x: 72, baseline: 556 });
 
   const chip = pad(unionBox(name.box, ident.box), 24);
   const avoid = [pad(brand.box, 12), pad(tags.box, 12)];

@@ -910,8 +910,10 @@ export function createEngine(o: EngineOptions): Engine {
     if (destroyed || failed || !ready) return;
     guard(() => {
       const m = o.measure();
-      // Regenerate only when it matters: the hero is min-height 100svh, so a mobile URL bar must not thrash the board.
-      if (Math.abs(m.width - W) < 0.5 && Math.abs(m.height - H) <= 120) return;
+      // Regenerate on any real size change. A tolerance here would leave the bitmap CSS-stretched (pads become ellipses)
+      // and the no-trace chip out of line with the bottom-anchored text. The mobile URL bar does not need one:
+      // the hero is min-height 100svh and svh does not move when the bar shows or hides.
+      if (Math.abs(m.width - W) < 0.5 && Math.abs(m.height - H) < 0.5) return;
       generate(m);
       prepare(false);
       sync();

@@ -263,6 +263,8 @@ function FormFields({ onSent, focusOnMount }: { onSent: (replyTo: string) => voi
       <div className="flex flex-col items-start gap-4">
         <Button
           type="submit"
+          // Ghost: Discord "Copy handle" is the primary route (config.contact.primary), so it owns the one amber fill.
+          variant="ghost"
           size="lg"
           // aria-disabled (not disabled) keeps focus on the button and lets the click through to our busy guard.
           aria-disabled={sending || undefined}

@@ -46,7 +46,16 @@ export interface SiteConfig {
     kicker: string;
     summary: string;
     cta: string;
-    screenshot: { widths: number[]; pattern: string; fallback: string; width: number; height: number; alt: string };
+    screenshot: {
+      widths: number[];
+      pattern: string;
+      fallback: string;
+      width: number;
+      height: number;
+      alt: string;
+      /** Phone-only crop shown below `media`; its own width/height keep the layout stable (CLS 0) while a different aspect loads. */
+      mobile: { media: string; widths: number[]; pattern: string; width: number; height: number };
+    };
     stats: StatTile[];
     highlights: string[];
     statsFallback: AtlasStats;
@@ -82,7 +91,8 @@ export const site: SiteConfig = {
   // Owner's answer to "real name". Used only as JSON-LD alternateName; no real name is published.
   spokenName: 'Mr Harold',
   // EDITABLE — owner: "you decide something cool". The "looking up" is the planes nod.
-  identity: 'Code, games, and a habit of looking up.',
+  // \u00a0 between "a" and "habit": `text-wrap: balance` otherwise leaves the article dangling at the end of line 1.
+  identity: 'Code, games, and a\u00a0habit of looking up.',
   // EDITABLE — owner: "gamer, programmer, something along those lines". **…** renders as amber emphasis.
   bio: "I'm MrHarold — a programmer who never really stopped being a gamer. I build the tools I wish existed for the games I play, like **Prospecting Atlas**, and I sweat the details nobody asked for. When I'm not shipping code, I'm probably in a flight sim or watching planes go over.",
   interests: ['gaming', 'programming', 'aviation'], // owner: gaming, programming, planes/aviation
@@ -119,12 +129,15 @@ export const site: SiteConfig = {
     summary: 'A fan database and toolset for the Roblox game Prospecting! — scraped from the official wiki, rebuilt around the questions players actually ask.',
     cta: 'Open Prospecting Atlas',
     screenshot: {
-      // Written by `npm run gen:shots` (scripts/shoot-atlas.mjs) from the live site. Intrinsic 1440×900 (16:10).
+      // Written by `npm run gen:shots` (scripts/shoot-atlas.mjs) from the live site. Desktop frame is cropped to 1440×744
+      // so its bottom edge ends above the Atlas "Jump straight in" icon cards instead of slicing through them.
       widths: [720, 1440],
       pattern: '/projects/prospecting-atlas-{w}.{ext}', // ext ∈ avif | webp
       fallback: '/projects/prospecting-atlas-1440.jpg',
       width: 1440,
-      height: 900,
+      height: 744,
+      // Phone capture: 390×550 CSS at 2x, so the Atlas UI text is legible at ~1:1 instead of ~3 px tall.
+      mobile: { media: '(max-width: 47.99rem)', widths: [780], pattern: '/projects/prospecting-atlas-m-{w}.{ext}', width: 780, height: 1100 },
       alt: 'The Prospecting Atlas home page: search bar, mineral and dig-site counts, and quick links into each section.',
     },
     stats: [

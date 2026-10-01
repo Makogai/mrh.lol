@@ -53,9 +53,14 @@ export function About() {
             <dt className="text-ink-400">Into</dt>
             <dd className="text-ink-100">
               {site.interests.map((interest, i) => (
+                // The dot lives inside the following item's nowrap span, with the breakable space before it, so a wrap
+                // starts the next line with "· aviation" and a line can never end on a dangling separator.
                 <Fragment key={interest}>
-                  {i > 0 && <span className="text-ink-400"> · </span>}
-                  <span className="whitespace-nowrap">{interest}</span>
+                  {i > 0 && ' '}
+                  <span className="whitespace-nowrap">
+                    {i > 0 && <span className="text-ink-400">· </span>}
+                    {interest}
+                  </span>
                 </Fragment>
               ))}
             </dd>

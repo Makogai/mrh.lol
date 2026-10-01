@@ -34,8 +34,22 @@ Without them the site still builds: the contact form is hidden and the project g
 
 1. Create a project. Copy the **Project URL** and the **publishable (anon) key** (Settings → API) into the two
    build variables above. Never use the `service_role` key anywhere in this repo or in Coolify.
-2. SQL Editor → paste `supabase/migrations/0001_init.sql` → Run. It creates `public.messages`, `public.projects`,
-   the `public.submit_contact(...)` RPC (validation, per-IP rate limit, honeypot) and the private settings table.
+2. SQL Editor → run **every file in `supabase/migrations/`, in numeric order**, one paste per file. Both are idempotent,
+   so re-running is safe.
+   - `0001_init.sql` creates `public.messages`, `public.projects`, the `public.submit_contact(...)` RPC (validation,
+     per-IP rate limit, honeypot) and the private settings table.
+   - `0002_discord_embed.sql` replaces `private.notify_discord()` with the rich embed version and seeds the
+     `site_url`, `inbox_url`, `discord_avatar_url` and `discord_buttons` settings. Skip it and Discord notifications
+     stay on the plain 0001 format.
+
+   Verify that 0002 is live (should return 3 rows):
+
+   ```sql
+   select key from private.settings where key in ('site_url', 'inbox_url', 'discord_buttons');
+   ```
+
+   Nothing in the repo records which migrations a given Supabase project has had applied, so re-run this check after
+   restoring or recreating a project.
 3. **Read messages:** Table Editor → `public.messages`. Anonymous visitors can insert through the RPC but can never
    read anything back. Toggle `is_read` as you go.
 4. **Add a project:** Table Editor → `public.projects` → insert a row with `published = true`, then trigger a

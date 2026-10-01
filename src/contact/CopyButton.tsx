@@ -78,12 +78,12 @@ export function CopyButton({ text, targetRef, copiedAnnouncement, onStatusChange
   return (
     <>
       <Button
-        variant="ghost"
+        variant="primary"
         size="lg"
         onClick={copy}
         // Fixed minimum so "Copy handle" and "Copied" don't make the button (and the row beside it) jump.
         className="min-w-48"
-        icon={copied ? <IconCheck className="text-amber-400" /> : <IconCopy />}
+        icon={copied ? <IconCheck className="text-iron-950" /> : <IconCopy />}
       >
         {copied ? 'Copied' : 'Copy handle'}
       </Button>

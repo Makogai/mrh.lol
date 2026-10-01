@@ -76,6 +76,10 @@
 
   /* Stat strip: the <ul> reveals as one frame (hairline grid + empty tiles), then each tile's CONTENT fades in on the
      stagger. Staggering the tiles themselves would flash the hairline background as a light slab. */
+  /* The outer hairline is an overlay, not the <ul>'s background showing through padding: the square tiles are clipped by
+     the 12 px corner arc, so a background-based ring tapers to nothing around each corner. Inner dividers stay gap-px. */
+  .sec-stats { position: relative; }
+  .sec-stats::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: var(--shadow-hairline); pointer-events: none; }
   .js .sec-stat > * {
     transition: opacity var(--dur-enter) var(--ease-out);
     transition-delay: calc(var(--i, 0) * var(--stagger));

@@ -7,8 +7,8 @@ import { StatStrip } from './StatStrip';
 
 const SHOT_SIZES = '(min-width:1280px) 760px, (min-width:768px) 90vw, 100vw';
 
-function shotSrcSet(ext: 'avif' | 'webp'): string {
-  const { widths, pattern } = site.flagship.screenshot;
+function shotSrcSet(ext: 'avif' | 'webp', set: { widths: number[]; pattern: string } = site.flagship.screenshot): string {
+  const { widths, pattern } = set;
   return widths.map((w) => `${pattern.replace('{w}', String(w)).replace('{ext}', ext)} ${w}w`).join(', ');
 }
 
@@ -48,6 +48,10 @@ export function FlagshipCard() {
 
         <figure className="sec-shot xl:col-span-7 xl:col-start-6 xl:row-span-2 xl:row-start-1 xl:self-center">
           <picture>
+            {/* Phone crop first (first matching <source> wins). width/height on <source> give the browser this variant's
+                aspect ratio before it loads, so swapping from the 1440×744 frame's ratio can't shift layout. */}
+            <source media={shot.mobile.media} type="image/avif" srcSet={shotSrcSet('avif', shot.mobile)} sizes="100vw" width={shot.mobile.width} height={shot.mobile.height} />
+            <source media={shot.mobile.media} type="image/webp" srcSet={shotSrcSet('webp', shot.mobile)} sizes="100vw" width={shot.mobile.width} height={shot.mobile.height} />
             <source type="image/avif" srcSet={shotSrcSet('avif')} sizes={SHOT_SIZES} />
             <source type="image/webp" srcSet={shotSrcSet('webp')} sizes={SHOT_SIZES} />
             <img src={shot.fallback} width={shot.width} height={shot.height} alt={shot.alt} loading="lazy" decoding="async" />

@@ -14,6 +14,7 @@
     "build": "node scripts/gen-data.mjs && npm run typecheck && npm run bundle",
     "build:nocheck": "node scripts/gen-data.mjs && npm run bundle",
     "preview": "vite preview --strictPort",
+    "gen:fonts": "node scripts/gen-fonts.mjs",
     "gen:assets": "node scripts/gen-assets.mjs",
     "gen:shots": "node scripts/shoot-atlas.mjs",
     "gen:avatar": "node scripts/gen-avatar.mjs",
