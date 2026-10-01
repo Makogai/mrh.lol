@@ -19,6 +19,7 @@
     "gen:avatar": "node scripts/gen-avatar.mjs",
     "qa:shots": "node scripts/qa/shots.mjs",
     "qa:fps": "node scripts/qa/fps.mjs",
+    "qa:integration": "node scripts/qa/integration.mjs",
     "qa:lighthouse": "node scripts/qa/lighthouse.mjs",
     "qa:docker": "node scripts/qa/docker-smoke.mjs"
   },
