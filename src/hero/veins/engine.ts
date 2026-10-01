@@ -94,7 +94,9 @@ export function createEngine(o: EngineOptions): Engine {
   let frames = 0;
   let avgFrameMs = 0;
 
-  // growth state machine
+  // growth state machine. One duration for phone and desktop, <= 1.2 s: growth is visual change, and every second of it
+  // after the canvas fades in is time Lighthouse's Speed Index counts as 'not finished yet' (it was 1.6 s on desktop).
+  const GROW_S = 1.2;
   let phase: 'grow' | 'creep' | 'done' = 'done';
   let phaseT = 0;
   let p88 = 0;
@@ -750,7 +752,7 @@ export function createEngine(o: EngineOptions): Engine {
   function update(dt: number) {
     if (phase === 'grow') {
       phaseT += dt;
-      const p = Math.min(1, phaseT / (phone ? 1.2 : 1.6));
+      const p = Math.min(1, phaseT / GROW_S);
       board.advance(sctx, p88 * (1 - (1 - p) ** 3), bloom);
       if (p >= 1) {
         phase = 'creep';
@@ -807,7 +809,7 @@ export function createEngine(o: EngineOptions): Engine {
   function draw() {
     dctx.clearRect(0, 0, W, H);
     dctx.globalCompositeOperation = 'lighter';
-    if (phase === 'grow') drawTips(p88 * (1 - (1 - Math.min(1, phaseT / (phone ? 1.2 : 1.6))) ** 3), false);
+    if (phase === 'grow') drawTips(p88 * (1 - (1 - Math.min(1, phaseT / GROW_S)) ** 3), false);
     else if (phase === 'creep') drawTips(p88 + (net.maxBirth - p88) * Math.min(1, phaseT / 40), true);
     drawLight(lightFade);
     for (const p of pulses) {

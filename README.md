@@ -52,6 +52,7 @@ Outputs are committed, so the Docker build never runs these.
 | Command | Regenerate when | Writes |
 |---|---|---|
 | `npm run gen:assets` | name, identity, interests, palette or the vein generator changed | `public/og.png`, `favicon.ico`, `apple-touch-icon.png`, `icon-*.png`, `site.webmanifest` |
+| `npm run gen:fonts` | you use new characters in the copy, or change the weights/widths the CSS asks for | `src/assets/fonts/*-site.woff2`. Keep `unicode-range` in `global.css` in step (the script prints it) |
 | `npm run gen:shots` | the Atlas site changed visibly | `public/projects/*` |
 | `npm run gen:avatar` | you replaced `assets-src/avatar.png` | `public/avatar/*`. Then set `site.avatar` in `site.ts` |
 
@@ -87,6 +88,7 @@ npm run qa:shots        # 390 / 768 / 1440 / 2560 screenshots + horizontal-overf
 npm run qa:fps          # hero frame times, pause on hidden / scrolled past
 npm run qa:docker       # build the image, run it, assert headers, caching, gzip, 404, healthz (-- --keep to keep it up)
 npm run qa:lighthouse   # mobile + desktop against the container on :8080; fails below 95 / 100 / 100 / 100 (mobile)
+                        # add `-- --runs 5` to repeat mobile and gate on the worst run; GPU is off unless `--gpu`
 ```
 
 Screenshots and reports land in `.qa/` (git-ignored). The QA scripts launch their own throwaway headless Chrome; set

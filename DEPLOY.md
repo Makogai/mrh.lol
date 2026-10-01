@@ -115,7 +115,7 @@ Projects are fetched **at build time** and baked in; adding a project changes no
 docker network create mrh && docker run --rm --network mrh -p 8080:80 "$(docker build -q .)"   # http://localhost:8080
 # or build + run + assert section 2's checks against a container:
 npm run qa:docker                  # add -- --keep to leave it running
-npm run qa:lighthouse              # mobile + desktop against http://localhost:8080
+npm run qa:lighthouse -- --runs 5   # 5x mobile + desktop against http://localhost:8080 (worst run is gated)
 ```
 
 The user-defined network matters only for the presence proxy: on Docker's default bridge there is no `127.0.0.11`, so

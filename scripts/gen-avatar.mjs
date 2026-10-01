@@ -16,7 +16,9 @@ if (!existsSync(src)) {
 }
 await mkdir(outDir, { recursive: true });
 
-for (const size of [512, 1024]) {
+// 352 = the phone rendition: the bezel is 176 CSS px there, and a 512 px file (29 KB AVIF) would be fetched at startup
+// because the avatar sits inside the lazy-load distance of the first viewport.
+for (const size of [352, 512, 1024]) {
   // 'attention' picks the crop window around the most salient region, so an off-centre face survives the square crop.
   const base = sharp(src).resize(size, size, { fit: 'cover', position: 'attention' });
   const jobs = {
