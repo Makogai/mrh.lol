@@ -1,0 +1,173 @@
+/* 01 LOADOUT (V2_DESIGN §2). Everything here reads the five frame variables; `data-pillar` on the <section> re-skins it.
+   Animations: transform / opacity, plus background-position inside pinned boxes. Ambient loops run only under
+   .lo-section[data-onscreen] (set by an IntersectionObserver + visibility check) and never under reduced motion. */
+@layer components {
+  .lo-section { --lo-hair: color-mix(in srgb, var(--color-ink-100) 14%, transparent); font-variant-numeric: tabular-nums; }
+  /* Background bloom: follows --accent, so it transitions with the pillar. Clipped to the section box (the page never scrolls sideways). */
+  .lo-section::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(60% 45% at 24% 38%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 70%);
+  }
+
+  /* ── CHARACTER ─────────────────────────────────────────────────────────────────────────────── */
+  .lo-char { display: flex; align-items: center; gap: 16px; }
+  .lo-avatar { flex: none; width: 72px; aspect-ratio: 1; border-radius: 16px; overflow: hidden; background: var(--surface-0); box-shadow: var(--shadow-hairline); display: grid; place-items: center; }
+  .lo-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .lo-mono { font-size: 32px; color: var(--accent); }
+  .lo-id { min-width: 0; }
+  .lo-name { font-size: 20px; line-height: 24px; }
+  .lo-class { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; font: 500 11px/16px var(--font-mono); letter-spacing: 0.12em; color: var(--color-ink-300); }
+  .lo-pill { padding: 0 8px; border-radius: 999px; background: var(--color-amber-400, #ffc247); color: #06080e; font-weight: 700; letter-spacing: 0.08em; }
+  .lo-disc { display: none; }
+  @media (width >= 64rem) {
+    .lo-char { flex-direction: column; align-items: stretch; gap: 0; position: sticky; top: 96px; align-self: start; }
+    .lo-avatar { width: 100%; max-width: 420px; border-radius: 24px; margin-inline: auto; }
+    .lo-mono { font-size: 160px; }
+    .lo-name { display: none; }
+    .lo-id { margin-top: 32px; text-align: center; }
+    .lo-class { justify-content: center; }
+    /* Lit disc: a radial pool plus two 1 px ellipse rings in the accent, under the avatar card. */
+    .lo-disc { display: block; position: relative; height: 72px; margin: 8px auto 0; width: min(420px, 100%); }
+    .lo-disc::before, .lo-disc::after { content: ""; position: absolute; left: 50%; top: 50%; border-radius: 50%; translate: -50% -50%; }
+    .lo-disc::before { width: 86%; height: 56px; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 30%, transparent), transparent); }
+    .lo-disc::after { width: 100%; height: 72px; border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); }
+    .lo-char { display: grid; }
+    .lo-avatar { grid-row: 1; }
+    .lo-disc { grid-row: 2; }
+    .lo-id { grid-row: 3; }
+  }
+
+  /* ── BIO + SLOTS ───────────────────────────────────────────────────────────────────────────── */
+  .lo-bio { max-width: 28ch; font-size: 22px; line-height: 1.25; font-weight: 500; letter-spacing: -0.01em; color: var(--color-ink-100); text-wrap: balance; }
+  @media (width >= 64rem) { .lo-bio { max-width: 24ch; font-size: var(--text-lead); line-height: var(--text-lead--line-height); } }
+  .lo-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 32px; }
+  .lo-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 112px; padding: 12px 8px; text-align: center; color: var(--color-ink-100); cursor: pointer; }
+  .lo-slot .sigil { color: var(--accent); }
+  .lo-slot-head { display: inline-flex; align-items: center; gap: 8px; }
+  .lo-slot-label { font-size: 12px; line-height: 16px; }
+  .lo-slot-sub { display: none; font: 500 11px/16px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ink-300); }
+  .lo-slot:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .lo-slot[aria-selected="true"] {
+    --tk: 3px;
+    box-shadow: var(--shadow-hairline), 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent), 0 12px 40px -16px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  .lo-slot-main { grid-column: 1 / -1; position: relative; overflow: hidden; align-items: flex-start; justify-content: center; min-height: 120px; padding: 16px 20px; text-align: left; }
+  .lo-slot-main .lo-slot-label { font-size: 22px; line-height: 28px; }
+  .lo-slot-main .lo-slot-sub { display: block; }
+  .lo-slot-main .lo-slot-head { gap: 12px; }
+  .lo-trace { position: absolute; right: 0; top: 0; width: 60%; height: 100%; color: var(--accent); opacity: 0.16; pointer-events: none; mask-image: linear-gradient(90deg, transparent, #000 60%); }
+  .lo-gh { display: none; }
+  @media (width >= 48rem) {
+    .lo-slot { min-height: 160px; gap: 8px; }
+    .lo-slot-label { font-size: 16px; line-height: 20px; }
+    .lo-slot-sub { display: block; }
+    .lo-slot-main { min-height: 200px; padding: 24px 32px; }
+    .lo-slot-main .lo-slot-label { font-size: 32px; line-height: 36px; }
+    .lo-gh { display: flex; flex-direction: column; gap: 8px; position: absolute; right: 32px; bottom: 24px; text-align: right; font: 500 11px/16px var(--font-mono); letter-spacing: 0.12em; color: var(--color-ink-300); }
+    .lo-gh b { display: block; font-size: 24px; line-height: 28px; letter-spacing: 0; color: var(--color-ink-100); }
+  }
+  @media (width >= 64rem) { .lo-slot { min-height: 200px; } }
+
+  /* Live dot: shape + a text label for screen readers. */
+  .lo-live > span:first-child { display: block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+
+  /* ── PANELS ────────────────────────────────────────────────────────────────────────────────── */
+  .lo-panels { margin-top: 16px; }
+  .lo-panel { min-height: 280px; }
+  @media (width >= 64rem) { .lo-panel { min-height: 240px; } }
+  .lo-panel[hidden] { display: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .lo-section[data-swapped] .lo-panel:not([hidden]) { animation: lo-in var(--dur-fast) var(--ease-out); }
+  }
+  @keyframes lo-in { from { opacity: 0; } }
+  .lo-kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 500 11px/16px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+  .lo-fine { margin-top: 12px; font: 500 11px/16px var(--font-mono); letter-spacing: 0.12em; color: var(--color-ink-300); }
+  .lo-headline { font-size: 22px; line-height: 28px; color: var(--color-ink-100); }
+  @media (width >= 64rem) { .lo-headline { font-size: 28px; line-height: 32px; } }
+  .lo-copy { position: relative; min-width: 0; }
+
+  /* Programming: editor gutter + mono lines. */
+  .lo-editor { padding: 0; min-height: 240px; overflow: hidden; }
+  .lo-code { counter-reset: line; margin: 0; padding: 16px 16px 16px 0; list-style: none; font: 400 14px/28px var(--font-mono); color: var(--color-ink-100); background: linear-gradient(var(--lo-hair), var(--lo-hair)) 48px 0 / 1px 100% no-repeat; }
+  .lo-code li { position: relative; padding-left: 68px; counter-increment: line; }
+  .lo-code li::before { content: counter(line); position: absolute; left: 0; width: 36px; text-align: right; color: var(--color-ink-500); }
+  .lo-code-now { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+  .lo-code-arrow { color: var(--accent); }
+
+  /* Games. */
+  .lo-games { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+  @media (width >= 48rem) { .lo-games { grid-template-columns: 1fr 1fr; } .lo-tile-big { grid-column: 1 / -1; } }
+  @media (width >= 64rem) { .lo-games { grid-template-columns: 1.35fr 1fr; grid-template-rows: 1fr 1fr; } .lo-tile-big { grid-column: 1; grid-row: 1 / 3; } }
+  .lo-tile { --lo-tile-ink: var(--accent); overflow: hidden; min-height: 168px; padding: 20px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .lo-tile-big { min-height: 220px; }
+  .lo-tile-art { position: absolute; inset: 0; pointer-events: none; color: var(--accent); }
+  .lo-tile-body { position: relative; }
+  .lo-tile-name { margin: 8px 0 0; font-size: 20px; line-height: 24px; color: var(--color-ink-100); }
+  .lo-tile-big .lo-tile-name { font-size: 28px; line-height: 32px; }
+  .lo-match { padding: 0 8px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 700; letter-spacing: 0.08em; }
+  .lo-score { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 16px 0 0; }
+  .lo-score dt { font: 500 10px/14px var(--font-mono); letter-spacing: 0.12em; color: var(--color-ink-400); }
+  .lo-score dd { margin: 0; font: 500 18px/24px var(--font-mono); color: var(--color-ink-100); }
+  .lo-links { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 16px 0 0; }
+  .lo-links a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--color-ink-100); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent); text-underline-offset: 4px; }
+  .lo-links a:hover { color: var(--accent); }
+  .lo-br { margin: 12px 0 0; font: 500 44px/1 var(--font-mono); color: var(--color-ink-100); }
+  .lo-br small { margin-left: 8px; font-size: 12px; letter-spacing: 0.12em; color: var(--accent); }
+  /* CS2: buy-menu cells + a gapped crosshair that eases toward the pointer (spring), mouse only. */
+  .lo-buy { position: absolute; right: 16px; top: 16px; width: 168px; height: 104px; display: grid; grid-template: 1fr 1fr / repeat(3, 1fr); border: 1px solid var(--lo-hair); opacity: 0.7; }
+  .lo-buy span { border: 0 solid var(--lo-hair); border-width: 0 1px 1px 0; padding: 4px 6px; font: 500 10px/12px var(--font-mono); color: var(--color-ink-500); }
+  .lo-buy span:nth-child(3n) { border-right-width: 0; } .lo-buy span:nth-child(n+4) { border-bottom-width: 0; }
+  .lo-xhair {
+    position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px; translate: var(--px) var(--py);
+    background:
+      linear-gradient(currentColor, currentColor) 50% 0 / 2px 12px no-repeat, linear-gradient(currentColor, currentColor) 50% 100% / 2px 12px no-repeat,
+      linear-gradient(currentColor, currentColor) 0 50% / 12px 2px no-repeat, linear-gradient(currentColor, currentColor) 100% 50% / 12px 2px no-repeat;
+    opacity: 0.8;
+  }
+  .lo-tile { --px: 0px; --py: 0px; }
+  @media (prefers-reduced-motion: no-preference) and (pointer: fine) { .lo-xhair { transition: translate var(--dur-spring) var(--ease-spring); } }
+  /* War Thunder: pitch ladder + a compass tape drifting inside a pinned box. */
+  .lo-ladder { position: absolute; right: 12px; top: 8px; width: 112px; height: 112px; opacity: 0.4; }
+  .lo-tape {
+    position: absolute; left: 0; right: 0; top: 0; height: 16px; opacity: 0.45;
+    background: repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 12px) 0 100% / 100% 6px no-repeat, repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 60px) 0 100% / 100% 12px no-repeat;
+    mask-image: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent);
+  }
+  /* Roblox: an 8 px stud tile with a 2 px highlight. */
+  .lo-tile[data-accent="roblox"] .lo-tile-art {
+    background: radial-gradient(circle at 36% 34%, rgb(255 255 255 / 0.16) 0 2px, transparent 2.5px), radial-gradient(circle, color-mix(in srgb, var(--accent) 16%, transparent) 0 3.4px, transparent 3.8px);
+    background-size: 8px 8px; mask-image: linear-gradient(120deg, transparent 10%, #000 90%);
+  }
+  .lo-section[data-onscreen] .lo-tape { animation: lo-tape 9s linear infinite; }
+  @keyframes lo-tape { to { background-position: -120px 100%, -120px 100%; } }
+  /* Live tie-in: the corner ticks pulse once every 4 s. */
+  .lo-section[data-onscreen] .lo-tile[data-live] { animation: lo-tick 4s var(--ease-out) infinite; }
+  @keyframes lo-tick { 0% { --tk: 6px; } 6% { --tk: 1px; } 16%, 100% { --tk: 6px; } }
+
+  /* Anime: angled panel frames with a 3 px halftone; speed lines on hover. */
+  .lo-anime { display: flex; flex-direction: column; gap: 20px; padding: 20px; min-height: 280px; overflow: hidden; }
+  .lo-frames { display: flex; height: 168px; }
+  .lo-frame { position: relative; flex: 1; overflow: hidden; margin-right: -4%; background: color-mix(in srgb, var(--accent) 14%, var(--surface-1)); clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); }
+  .lo-frame:nth-child(2) { clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); transform: translateY(8px); }
+  .lo-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .lo-frame::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle, rgb(0 0 0 / 0.38) 0 0.8px, transparent 1.1px) 0 0 / 3px 3px; mix-blend-mode: multiply; }
+  .lo-frame::before { content: ""; position: absolute; inset: 0; z-index: 1; opacity: 0; transition: opacity var(--dur-fast) var(--ease-out); background: repeating-linear-gradient(105deg, transparent 0 14px, rgb(255 255 255 / 0.22) 14px 15px); }
+  .lo-anime:hover .lo-frame::before { opacity: 1; }
+  .lo-favs { display: grid; gap: 4px; margin: 16px 0 0; padding: 0; list-style: none; color: var(--color-ink-100); font-size: 15px; line-height: 22px; }
+  .lo-favs span { margin-right: 6px; font: 500 11px/16px var(--font-mono); letter-spacing: 0.08em; color: var(--accent); }
+  @media (width >= 48rem) { .lo-anime { flex-direction: row; align-items: center; gap: 32px; } .lo-frames { flex: 0 0 46%; height: 208px; } .lo-copy { flex: 1; } }
+
+  /* Training: plate rings and a 4-tick tempo bar on a 3 s loop. */
+  .lo-train { display: flex; align-items: center; gap: 24px; padding: 20px; min-height: 280px; }
+  .lo-plate { flex: none; width: 120px; height: 120px; color: color-mix(in srgb, var(--accent) 70%, transparent); }
+  .lo-lifts { display: grid; grid-template-columns: repeat(2, auto); justify-content: start; gap: 12px 32px; margin: 16px 0 0; }
+  .lo-lifts dt { font: 500 10px/14px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ink-400); }
+  .lo-lifts dd { margin: 0; font: 500 28px/1.1 var(--font-mono); color: var(--color-ink-100); }
+  .lo-lifts small { font-size: 12px; color: var(--accent); }
+  .lo-tempo { display: flex; gap: 6px; margin-top: 20px; }
+  .lo-tempo i { width: 28px; height: 4px; border-radius: 2px; background: var(--accent); opacity: 0.3; }
+  .lo-section[data-onscreen] .lo-tempo i { animation: lo-tempo 3s linear infinite; animation-delay: calc(var(--i) * 0.75s); }
+  @keyframes lo-tempo { 0%, 24% { opacity: 1; } 25%, 100% { opacity: 0.3; } }
+  @media (width >= 48rem) { .lo-plate { width: 168px; height: 168px; } .lo-train { gap: 40px; padding: 32px; } }
+  @media (prefers-reduced-motion: reduce) { .lo-tape, .lo-tempo i, .lo-tile { animation: none !important; } }
+}

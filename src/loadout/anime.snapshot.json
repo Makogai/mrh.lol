@@ -1,0 +1,100 @@
+{
+  "username": "makogai",
+  "fetchedAt": "2026-10-01T20:25:30.750Z",
+  "nowWatching": [
+    {
+      "id": 2167,
+      "title": "Clannad",
+      "url": "https://anilist.co/anime/2167",
+      "cover": {
+        "src": "/anime/2167.webp",
+        "width": 230,
+        "height": 324
+      },
+      "progress": 9,
+      "episodes": 23
+    },
+    {
+      "id": 101921,
+      "title": "Kaguya-sama: Love is War",
+      "url": "https://anilist.co/anime/101921",
+      "cover": {
+        "src": "/anime/101921.webp",
+        "width": 230,
+        "height": 328
+      },
+      "progress": 1,
+      "episodes": 12
+    },
+    {
+      "id": 98436,
+      "title": "The Ancient Magus' Bride",
+      "url": "https://anilist.co/anime/98436",
+      "cover": {
+        "src": "/anime/98436.webp",
+        "width": 230,
+        "height": 325
+      },
+      "progress": 9,
+      "episodes": 24
+    }
+  ],
+  "favourites": [
+    {
+      "id": 98659,
+      "title": "Classroom of the Elite",
+      "url": "https://anilist.co/anime/98659",
+      "cover": {
+        "src": "/anime/98659.webp",
+        "width": 230,
+        "height": 358
+      }
+    },
+    {
+      "id": 20997,
+      "title": "Charlotte",
+      "url": "https://anilist.co/anime/20997",
+      "cover": {
+        "src": "/anime/20997.webp",
+        "width": 230,
+        "height": 328
+      }
+    },
+    {
+      "id": 101922,
+      "title": "Demon Slayer: Kimetsu no Yaiba",
+      "url": "https://anilist.co/anime/101922",
+      "cover": {
+        "src": "/anime/101922.webp",
+        "width": 230,
+        "height": 320
+      }
+    },
+    {
+      "id": 20954,
+      "title": "A Silent Voice",
+      "url": "https://anilist.co/anime/20954",
+      "cover": {
+        "src": "/anime/20954.webp",
+        "width": 230,
+        "height": 326
+      }
+    },
+    {
+      "id": 19815,
+      "title": "No Game, No Life",
+      "url": "https://anilist.co/anime/19815",
+      "cover": {
+        "src": "/anime/19815.webp",
+        "width": 230,
+        "height": 325
+      }
+    }
+  ],
+  "stats": {
+    "count": 457,
+    "episodesWatched": 9607,
+    "daysWatched": 158.9,
+    "meanScore": 84.65
+  }
+}
