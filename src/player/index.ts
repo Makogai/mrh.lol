@@ -21,7 +21,7 @@ export interface PlayerStats {
   draws: number; triangles: number; gl: 1 | 2; running: boolean;
   frames: number;                  // total frames drawn since mount (additive: lets tests prove "no frames")
 }
-export type PlayerErrorCode = 'webgl-unavailable' | 'shader' | 'network' | 'format' | 'decode' | 'context-lost';
+export type PlayerErrorCode = 'webgl-unavailable' | 'shader' | 'network' | 'format' | 'decode' | 'context-lost' | 'perf';
 
 const TAU = Math.PI * 2;
 // spring slots

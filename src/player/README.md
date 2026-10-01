@@ -178,3 +178,10 @@ stops moving. The demo's `?debug=1` overlay and `window.__player` are built on t
 | `input.ts` | cursor tracking, drag, inertia, tap |
 | `camera.ts` | yaw-invariant framing, cursor-to-pedestal ray |
 | `manifest.ts` | the SPEC 3.2 contract types |
+
+## Squad stage (V2 lobby): `squad.ts`
+
+`mountSquad(canvas, { actors, layout: 'line' | 'v', onActor, onReady, onSpawn, onError })` draws several avatars in one WebGL context
+(one shared program, one rAF, fixed camera from `src/squad/layout.ts`). `handle.start()` runs the ready check (180 ms stagger),
+`wave(i)`, `highlight(i, on)`, `setActive`, `destroy`. Errors include `'perf'` (EMA > 22 ms for 60 frames at DPR 1): the host keeps its
+2D posters. `mountPlayer` (index.ts) is the old single-avatar card, no longer imported by the page. Assets: `npm run roblox:squad`.

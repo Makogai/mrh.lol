@@ -39,6 +39,16 @@ export function classify(mesh, cfg, log) {
       if (!(forced in B)) throw new Error(`avatar.config.json: groups.${g.name}.bone "${forced}" is not one of ${BONE_NAMES.join(', ')}`);
       setRigid(g.corners, B[forced]); rec.bone = forced; rec.rule = 'config override'; continue;
     }
+    if (cfg.groups?.[g.name]?.split === 'sides') {
+      // Squad avatars (config only): one accessory that mixes shoulder wings, a crown and chest art. Split it per position-welded
+      // component: far-left/right pieces flap as wings, pieces above the neck follow the head, the rest stays on the torso.
+      const cnt = { wingR: 0, wingL: 0, head: 0, torso: 0 };
+      for (const comp of components(mesh, g, true)) {
+        const bone = comp.bb.cen[1] > neckY ? B.head : Math.abs(comp.bb.cen[0]) > (cfg.groups[g.name].sideX ?? 0.9) ? (comp.bb.cen[0] > 0 ? B.wingL : B.wingR) : B.torso;
+        cnt[BONE_NAMES[bone]] += comp.tris.length; setRigid(comp.corners, bone);
+      }
+      rec.bone = 'sides'; rec.rule = 'config split ' + JSON.stringify(cnt); continue;
+    }
     if (g.isPlayer) { // 4.2 body parts
       let bone, rule;
       if (g === headPart || bb.cen[1] > neckY) { bone = 'head'; rule = g === headPart ? 'head part' : 'above neck'; }

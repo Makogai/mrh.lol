@@ -56,7 +56,8 @@ export async function processTexture(file, o) {
       return { solid: [0, 1, 2].map((k) => Math.round(sum[k] / n) / 255), srcSize: [info.width, info.height], hasAlpha: false, realAlpha, srcFormat: meta.format };
     }
   }
-  const [w, h] = o.size || defaultSize(info.width, info.height);
+  let [w, h] = o.size || defaultSize(info.width, info.height);
+  if (o.cap) { w = Math.min(w, o.cap); h = Math.min(h, o.cap); } // squad LOD: phone packs cap textures at 128
   if (!isPot(w) || !isPot(h)) throw new Error(`${path.basename(file)}: output size ${w}x${h} is not a power of two`);
   // fit 'fill': UVs are normalised, so a non-uniform resize of a non-square atlas is exactly right.
   let pix = rgb, pw = info.width, ph = info.height;

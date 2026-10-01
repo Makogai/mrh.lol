@@ -8,7 +8,44 @@ import fsSrc from './shaders/player.frag.glsl?raw';
 
 export type GL = WebGLRenderingContext | WebGL2RenderingContext;
 
-export function createRenderer(gl: GL, m: AvatarManifest, bin: ArrayBuffer, srcs: Map<string, TexSource>) {
+/** The linked avatar program. Shared between actors by the squad stage (one compile, one link); createRenderer makes its own otherwise. */
+export interface Prog { prog: WebGLProgram; L: Record<string, WebGLUniformLocation | null>; init(): void; release(): void }
+
+export function createProgram(gl: GL): Prog {
+  function shader(type: number, src: string): WebGLShader {
+    const s = gl.createShader(type)!;
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw perr('shader', gl.getShaderInfoLog(s) || 'compile failed');
+    return s;
+  }
+  const p: Prog = {
+    prog: null as unknown as WebGLProgram, L: {},
+    init() {
+      const vs = shader(gl.VERTEX_SHADER, vsSrc), fs = shader(gl.FRAGMENT_SHADER, fsSrc);
+      p.prog = gl.createProgram()!;
+      gl.attachShader(p.prog, vs); gl.attachShader(p.prog, fs);
+      ['a_pos', 'a_nrm', 'a_uv', 'a_skin'].forEach((n, i) => gl.bindAttribLocation(p.prog, i, n));
+      gl.linkProgram(p.prog);
+      if (!gl.getProgramParameter(p.prog, gl.LINK_STATUS)) throw perr('shader', gl.getProgramInfoLog(p.prog) || 'link failed');
+      gl.deleteShader(vs); gl.deleteShader(fs);
+      p.L = {};
+      for (const n of ['u_viewProj', 'u_bone', 'u_jq', 'u_jp', 'u_posMin', 'u_posRange', 'u_uvMin', 'u_uvRange', 'u_vm', 'u_tex', 'u_mat', 'u_mat2', 'u_eye', 'u_mode', 'u_fx', 'u_ground', 'u_cursorI']) p.L[n] = gl.getUniformLocation(p.prog, n);
+      gl.useProgram(p.prog);
+      gl.uniform1i(p.L.u_tex, 0);
+    },
+    release() { if (p.prog) gl.deleteProgram(p.prog); },
+  };
+  return p;
+}
+
+/** What one draw() call renders. Defaults = the single-avatar card (clear, pedestal, opaque then halo). */
+export interface DrawOpts {
+  pedestal?: boolean;    // false: the squad floor replaces the per-avatar pedestal
+  clear?: boolean;       // false: the stage already set the viewport and cleared
+  pass?: 0 | 1 | 2;      // 0 all, 1 opaque only, 2 additive (halo) only: the stage draws every actor's opaque pass before any halo
+}
+
+export function createRenderer(gl: GL, m: AvatarManifest, bin: ArrayBuffer, srcs: Map<string, TexSource>, shared?: Prog) {
   const hdr = new DataView(bin);
   const off = (o: number) => hdr.getUint32(o, true);
   const pO = off(16), nO = off(20), uO = off(24), sO = off(28), iO = off(32);
@@ -24,16 +61,9 @@ export function createRenderer(gl: GL, m: AvatarManifest, bin: ArrayBuffer, srcs
   const jp = new Float32Array(24);
   m.bones.forEach((b, i) => jp.set(b.pivot, i * 3));
 
-  let prog: WebGLProgram, vb: WebGLBuffer, ib: WebGLBuffer, gb: WebGLBuffer, dummy: WebGLTexture;
+  const own = shared ? null : createProgram(gl), P = (shared || own)!;
+  let vb: WebGLBuffer, ib: WebGLBuffer, gb: WebGLBuffer, dummy: WebGLTexture;
   let texs: Map<string, WebGLTexture>;
-  let L: Record<string, WebGLUniformLocation | null>;
-
-  function shader(type: number, src: string): WebGLShader {
-    const s = gl.createShader(type)!;
-    gl.shaderSource(s, src); gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw perr('shader', gl.getShaderInfoLog(s) || 'compile failed');
-    return s;
-  }
 
   function texture(src: TexSource | null): WebGLTexture {
     const t = gl.createTexture()!;
@@ -66,15 +96,7 @@ export function createRenderer(gl: GL, m: AvatarManifest, bin: ArrayBuffer, srcs
 
     init() {
       if (u32 && !(gl as WebGL2RenderingContext).createVertexArray && !gl.getExtension('OES_element_index_uint')) throw perr('format', 'u32 indices unsupported');
-      const vs = shader(gl.VERTEX_SHADER, vsSrc), fs = shader(gl.FRAGMENT_SHADER, fsSrc);
-      prog = gl.createProgram()!;
-      gl.attachShader(prog, vs); gl.attachShader(prog, fs);
-      ['a_pos', 'a_nrm', 'a_uv', 'a_skin'].forEach((n, i) => gl.bindAttribLocation(prog, i, n));
-      gl.linkProgram(prog);
-      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw perr('shader', gl.getProgramInfoLog(prog) || 'link failed');
-      gl.deleteShader(vs); gl.deleteShader(fs);
-      L = {};
-      for (const n of ['u_viewProj', 'u_bone', 'u_jq', 'u_jp', 'u_posMin', 'u_posRange', 'u_uvMin', 'u_uvRange', 'u_vm', 'u_tex', 'u_mat', 'u_mat2', 'u_eye', 'u_mode', 'u_fx', 'u_ground', 'u_cursorI']) L[n] = gl.getUniformLocation(prog, n);
+      own?.init();                                                  // a shared program is initialised by its owner (the stage) first
 
       // The vertex blocks are a prefix of the file, so a view (no copy) is enough; indices need their own buffer
       // because one WebGL buffer cannot be bound to both ARRAY_BUFFER and ELEMENT_ARRAY_BUFFER.
@@ -90,10 +112,7 @@ export function createRenderer(gl: GL, m: AvatarManifest, bin: ArrayBuffer, srcs
       texs = new Map();
       srcs.forEach((s, url) => texs.set(url, texture(s)));
 
-      gl.useProgram(prog);
-      gl.uniform1i(L.u_tex, 0);
-      gl.uniform3fv(L.u_jp, jp);
-      gl.uniform2f(L.u_uvMin, q.uvMin[0], q.uvMin[1]); gl.uniform2f(L.u_uvRange, q.uvRange[0], q.uvRange[1]);
+      gl.useProgram(P.prog);
       // Attributes 1-3 are disabled for the ground quad; their constants are never read in that mode.
       for (let i = 1; i < 4; i++) gl.vertexAttrib4f(i, 0, 0, 0, 0);
       gl.frontFace(gl.CCW);
@@ -103,16 +122,23 @@ export function createRenderer(gl: GL, m: AvatarManifest, bin: ArrayBuffer, srcs
 
     /** Uploads the camera arrays (call after the framing changes). */
     view() {
-      gl.useProgram(prog);
-      gl.uniformMatrix4fv(L.u_viewProj, false, r.vp);
-      gl.uniform3fv(L.u_eye, r.eye);
+      gl.useProgram(P.prog);
+      gl.uniformMatrix4fv(P.L.u_viewProj, false, r.vp);
+      gl.uniform3fv(P.L.u_eye, r.eye);
     },
 
-    draw(w: number, h: number) {
-      gl.viewport(0, 0, w, h);
-      gl.depthMask(true);                                           // clear() honours the depth mask
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      gl.useProgram(prog);
+    draw(w: number, h: number, o?: DrawOpts) {
+      const L = P.L;
+      if (o?.clear !== false) {
+        gl.viewport(0, 0, w, h);
+        gl.depthMask(true);                                         // clear() honours the depth mask
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      }
+      gl.useProgram(P.prog);
+      // Per-avatar constants live in the (possibly shared) program, so every draw sets its own.
+      r.view();
+      gl.uniform3fv(L.u_jp, jp);
+      gl.uniform2f(L.u_uvMin, q.uvMin[0], q.uvMin[1]); gl.uniform2f(L.u_uvRange, q.uvRange[0], q.uvRange[1]);
       gl.uniformMatrix4fv(L.u_bone, false, r.bones);
       gl.uniform4fv(L.u_jq, r.jq);
       const f = r.fx;
@@ -122,15 +148,17 @@ export function createRenderer(gl: GL, m: AvatarManifest, bin: ArrayBuffer, srcs
       gl.activeTexture(gl.TEXTURE0);
 
       // 1. pedestal: no depth, premultiplied blend into the transparent buffer (glow adds light, shadow darkens)
-      gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.CULL_FACE);
-      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      gl.uniform1f(L.u_vm, 2); gl.uniform1f(L.u_mode, 2);
-      gl.uniform3f(L.u_posMin, gLo, 0, gLo); gl.uniform3f(L.u_posRange, gSpan, 0, gSpan);
-      gl.bindBuffer(gl.ARRAY_BUFFER, gb);
-      gl.vertexAttribPointer(0, 3, gl.UNSIGNED_SHORT, true, 6, 0);
-      gl.enableVertexAttribArray(0);
-      gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2); gl.disableVertexAttribArray(3);
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      if (o?.pedestal !== false) {
+        gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.CULL_FACE);
+        gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.uniform1f(L.u_vm, 2); gl.uniform1f(L.u_mode, 2);
+        gl.uniform3f(L.u_posMin, gLo, 0, gLo); gl.uniform3f(L.u_posRange, gSpan, 0, gSpan);
+        gl.bindBuffer(gl.ARRAY_BUFFER, gb);
+        gl.vertexAttribPointer(0, 3, gl.UNSIGNED_SHORT, true, 6, 0);
+        gl.enableVertexAttribArray(0);
+        gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2); gl.disableVertexAttribArray(3);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
 
       // 2. avatar: SPEC 3.1 attribute layout, every attribute normalized (identical decode in WebGL1 and 2)
       gl.bindBuffer(gl.ARRAY_BUFFER, vb);
@@ -138,7 +166,7 @@ export function createRenderer(gl: GL, m: AvatarManifest, bin: ArrayBuffer, srcs
       gl.vertexAttribPointer(1, 2, gl.UNSIGNED_BYTE, true, 2, nO);
       gl.vertexAttribPointer(2, 2, gl.UNSIGNED_SHORT, true, 4, uO);
       gl.vertexAttribPointer(3, 4, gl.UNSIGNED_BYTE, true, 4, sO);
-      gl.enableVertexAttribArray(1); gl.enableVertexAttribArray(2); gl.enableVertexAttribArray(3);
+      for (let i = 0; i < 4; i++) gl.enableVertexAttribArray(i);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
       gl.uniform1f(L.u_vm, 0);
       gl.uniform3f(L.u_posMin, q.posMin[0], q.posMin[1], q.posMin[2]);
@@ -147,6 +175,7 @@ export function createRenderer(gl: GL, m: AvatarManifest, bin: ArrayBuffer, srcs
       let additive = false;
       for (const d of m.draws) {
         const mt = m.materials[d.material], k = d.material * 8;
+        if (o?.pass === 1 ? mt.pass === 'additive' : o?.pass === 2 && mt.pass !== 'additive') continue;
         if (mt.pass === 'additive' && !additive) {                  // the halo: pure light, never writes depth
           additive = true;
           gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
@@ -163,8 +192,8 @@ export function createRenderer(gl: GL, m: AvatarManifest, bin: ArrayBuffer, srcs
 
     release() {
       // Deleting on a lost context is a harmless no-op, so this is also the destroy() path.
-      if (!prog) return;
-      gl.deleteProgram(prog);
+      if (!vb) return;
+      own?.release();
       [vb, ib, gb].forEach((b) => gl.deleteBuffer(b));
       gl.deleteTexture(dummy);
       texs.forEach((t) => gl.deleteTexture(t));

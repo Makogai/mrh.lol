@@ -1,0 +1,182 @@
+/* 03 LOBBY (src/squad). Slot positions are the --v-* (phone) / --w-* (>= 48rem) custom properties set by Slots.tsx from layout.ts, so the
+   server-rendered poster line-up already sits where the WebGL stage will draw. Everything here animates transform / opacity only. */
+
+.lb-stage {
+  --ring-ar: 0.36;                       /* floor ring height / width: the camera's elevation seen at the feet (phone V is raised) */
+  aspect-ratio: 4 / 5;
+  width: 100%;
+  isolation: isolate;
+}
+@media (width >= 48rem) { .lb-stage { --ring-ar: 0.22; aspect-ratio: 16 / 7; } }
+
+/* A faint LOBBY word behind everything (3 % ink). Its own clip box, so the stage itself never has to clip posters or wings. */
+.lb-word {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: inherit;
+  font-weight: 800;
+  font-stretch: 125%;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  font-size: min(20vw, 17rem);
+  line-height: 1;
+  color: rgb(238 242 251 / 0.03);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* One slot = the box a 7-stud avatar fills at that position. Feet are on its bottom edge. No transform / opacity here: the slot must
+   not form a stacking context, so the plate (z 3) sits above the canvas (z 2) above the posters. */
+.lb-slot {
+  position: absolute;
+  left: var(--v-l); top: var(--v-t); width: var(--v-w); height: var(--v-h);
+}
+@media (width >= 48rem) { .lb-slot { left: var(--w-l); top: var(--w-t); width: var(--w-w); height: var(--w-h); } }
+
+/* Floor ring under the feet: the poster-state twin of the shader's ring and pool. Hidden once the slot is live in 3D. */
+.lb-ring {
+  position: absolute;
+  left: 50%; bottom: 0;
+  width: 126%;
+  aspect-ratio: 1 / var(--ring-ar);
+  translate: -50% 50%;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent, var(--color-ink-500)) 40%, transparent);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--color-amber-400) 16%, transparent), transparent);
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), opacity var(--dur-enter) var(--ease-out);
+}
+.lb-slot[data-hl] .lb-ring { border-color: var(--accent); box-shadow: 0 0 24px -4px var(--accent); }
+.lb-slot[data-3d] .lb-ring { opacity: 0; }
+
+/* Poster: the trimmed Roblox render, sized by the avatar's real height (--k = studs / 7) so a short avatar stays short. */
+.lb-poster {
+  position: absolute;
+  left: 50%; bottom: 0;
+  translate: -50% 0;
+  display: block;
+  height: calc(var(--k, 1) * 100%);
+  transition: opacity var(--dur-enter) var(--ease-out), filter var(--dur-fast) var(--ease-out);
+}
+.lb-poster img { display: block; height: 100%; width: auto; max-width: none; user-select: none; -webkit-user-drag: none; }
+.lb-slot[data-hl] .lb-poster { filter: drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 55%, transparent)); }
+.lb-slot[data-3d] .lb-poster { opacity: 0; }
+.lb-slot[data-wave] .lb-poster { animation: lb-hop 640ms var(--ease-spring); }
+@keyframes lb-hop {
+  0% { transform: translateY(0) rotate(0); }
+  30% { transform: translateY(-3.5%) rotate(-2deg); }
+  60% { transform: translateY(-1.5%) rotate(1.5deg); }
+  100% { transform: translateY(0) rotate(0); }
+}
+
+/* Open slot: DOM silhouette, dashed ring, inert plate. */
+.lb-sil {
+  position: absolute;
+  left: 50%; bottom: 0;
+  translate: -50% 0;
+  height: 86%; width: auto;
+  fill: color-mix(in srgb, var(--color-ink-500) 35%, transparent);
+}
+.is-open .lb-ring { border: 1px dashed color-mix(in srgb, var(--color-ink-500) 55%, transparent); background: none; }
+
+/* Plates: a 32px pill at the feet. The button is the wave control; the arrow is a separate link to the profile. */
+.lb-plate {
+  position: absolute;
+  z-index: 3;
+  left: 50%; bottom: 0;
+  translate: -50% calc(100% + 10px);
+  display: flex;
+  align-items: center;
+  height: 32px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--surface-0) 88%, transparent);
+  box-shadow: var(--shadow-hairline), 0 0 0 1px color-mix(in srgb, var(--accent, transparent) 22%, transparent);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+.lb-slot[data-hl] .lb-plate { box-shadow: var(--shadow-hairline), 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent); }
+.lb-plate.is-open {
+  font-size: 9px;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-ink-500);
+  background: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-ink-500) 45%, transparent);
+  border-radius: 999px;
+}
+/* Phones: the outer plates lean outward so neighbours' plates never overlap in the V. */
+@media (width < 48rem) {
+  .lb-slot:not(.is-open)[data-slot="0"] .lb-plate  { translate: -75% calc(100% + 10px); }
+  .lb-slot:not(.is-open)[data-slot="4"] .lb-plate { translate: -25% calc(100% + 10px); }
+  .lb-slot:not(.is-open)[data-slot="1"] .lb-plate { translate: -62% calc(100% + 10px); }
+  .lb-slot:not(.is-open)[data-slot="3"] .lb-plate { translate: -38% calc(100% + 10px); }
+}
+.lb-plate-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 4px 0 12px;
+  border: 0;
+  background: none;
+  color: var(--color-ink-100);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.lb-plate-btn::before { content: ""; position: absolute; inset: -6px -2px; }   /* >= 44px tap target around a 32px pill */
+.lb-plate-name { max-width: 6.5rem; overflow: hidden; text-overflow: ellipsis; }
+@media (width >= 48rem) { .lb-plate-btn { font-size: 13px; } .lb-plate-name { max-width: 11rem; } }
+.lb-plate-role { font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: 0.1em; color: var(--accent); }
+.lb-plate-link, .lb-row-link {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px; height: 32px;
+  border-radius: 999px;
+  color: var(--color-ink-400);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.lb-plate-link::before, .lb-row-link::before { content: ""; position: absolute; inset: -6px; }
+.lb-plate-link:hover, .lb-row-link:hover { color: var(--accent, var(--color-amber-400)); }
+
+.lb-canvas { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; }
+
+/* Below the stage: roster first on phones (the primary info there), then the panel. From 64rem: panel columns 1-5, roster 6-12. */
+.lb-lower { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 24px; }
+@media (width >= 64rem) {
+  .lb-lower { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 32px 24px; margin-top: 32px; }
+  .lb-panel-wrap { grid-column: 1 / 6; grid-row: 1; }
+  .lb-roster-wrap { grid-column: 6 / 13; grid-row: 1; }
+}
+.lb-roster { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.lb-row { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 12px 12px 16px; }
+.lb-row-shot { position: relative; flex: none; width: 40px; height: 40px; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 2px var(--accent); }
+.lb-row-shot img { display: block; width: 40px; height: 40px; }
+.lb-row-mono { display: grid; place-items: center; width: 100%; height: 100%; background: var(--color-iron-800); font-weight: 800; text-transform: uppercase; }
+.lb-row-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; line-height: 24px; font-weight: 700; }
+.lb-row-role { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; color: var(--accent); }
+.lb-row.is-open {
+  color: var(--color-ink-500);
+  border: 1px dashed color-mix(in srgb, var(--color-ink-500) 45%, transparent);
+  border-radius: var(--radius-pad);
+}
+.lb-row-dot { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 1px dashed color-mix(in srgb, var(--color-ink-500) 55%, transparent); }
+
+/* The readout steps 1/5 -> n/5 with an amber flash per step (the span is re-keyed per count, so the animation restarts). */
+.lb-readout[data-tick] { animation: lb-flash 420ms var(--ease-out); }
+@keyframes lb-flash { from { color: var(--color-amber-400); text-shadow: 0 0 14px rgb(255 194 71 / 0.55); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-poster, .lb-ring, .lb-plate { transition: none; }
+  .lb-slot[data-wave] .lb-poster { animation: none; filter: brightness(1.18); }
+  .lb-readout[data-tick] { animation: none; }
+}

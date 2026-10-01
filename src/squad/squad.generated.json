@@ -1,0 +1,101 @@
+{
+ "v": 1,
+ "members": [
+  {
+   "id": "me",
+   "userId": 1113999731,
+   "packs": {
+    "desktop": "squad/me/",
+    "phone": "squad/me/phone/"
+   },
+   "height": 6.691,
+   "radius": 2.9524,
+   "wave": true,
+   "poster": {
+    "x1": {
+     "w": 244,
+     "h": 360,
+     "avif": "squad/me/poster-360.23bc8468.avif",
+     "webp": "squad/me/poster-360.8e230339.webp"
+    },
+    "x2": {
+     "w": 488,
+     "h": 720,
+     "avif": "squad/me/poster-720.4ba820c7.avif",
+     "webp": "squad/me/poster-720.5e91aa64.webp"
+    }
+   },
+   "loadout": {
+    "w": 600,
+    "h": 880,
+    "avif": "squad/me/loadout-600x880.97d07a9f.avif",
+    "webp": "squad/me/loadout-600x880.d45857a7.webp"
+   },
+   "headshot": {
+    "size": 80,
+    "avif": "squad/me/headshot-80.85e9b06b.avif",
+    "webp": "squad/me/headshot-80.a5f7235c.webp"
+   }
+  },
+  {
+   "id": "7862008029",
+   "userId": 7862008029,
+   "packs": {
+    "desktop": "squad/7862008029/",
+    "phone": "squad/7862008029/phone/"
+   },
+   "height": 5.467,
+   "radius": 3.3678,
+   "wave": true,
+   "poster": {
+    "x1": {
+     "w": 454,
+     "h": 360,
+     "avif": "squad/7862008029/poster-360.e86662de.avif",
+     "webp": "squad/7862008029/poster-360.e8622061.webp"
+    },
+    "x2": {
+     "w": 907,
+     "h": 720,
+     "avif": "squad/7862008029/poster-720.b9019201.avif",
+     "webp": "squad/7862008029/poster-720.c23f1848.webp"
+    }
+   },
+   "headshot": {
+    "size": 80,
+    "avif": "squad/7862008029/headshot-80.8e95a040.avif",
+    "webp": "squad/7862008029/headshot-80.20b0e963.webp"
+   }
+  },
+  {
+   "id": "1197478178",
+   "userId": 1197478178,
+   "packs": {
+    "desktop": "squad/1197478178/",
+    "phone": "squad/1197478178/phone/"
+   },
+   "height": 5.932,
+   "radius": 1.873,
+   "wave": false,
+   "poster": {
+    "x1": {
+     "w": 192,
+     "h": 360,
+     "avif": "squad/1197478178/poster-360.5c130618.avif",
+     "webp": "squad/1197478178/poster-360.55e45703.webp"
+    },
+    "x2": {
+     "w": 385,
+     "h": 720,
+     "avif": "squad/1197478178/poster-720.b2660b51.avif",
+     "webp": "squad/1197478178/poster-720.5bf4aafe.webp"
+    }
+   },
+   "headshot": {
+    "size": 80,
+    "avif": "squad/1197478178/headshot-80.61ce1e44.avif",
+    "webp": "squad/1197478178/headshot-80.8013eb07.webp"
+   }
+  }
+ ]
+}

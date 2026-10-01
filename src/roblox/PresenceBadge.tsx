@@ -1,6 +1,7 @@
 import { cx } from '../lib/cx';
 import { site, type PresenceMode } from '../config/site';
 import type { Presence } from './presence';
+import './player.css'; // .pl-fade / .pl-breathe: PlayerSection used to load this; the Contact tile still needs it until the status package replaces this badge
 
 const TEXT = 'font-mono text-xs tracking-label uppercase';
 

@@ -12,8 +12,14 @@ import { resolveTexture, processTexture, meanGreen, meanAbsDiff } from './lib/te
 import { encodeBin, decodeBin } from './lib/bin.mjs';
 import { writeRigDebug } from './lib/raster.mjs';
 import { EXPECT } from './lib/expect.mjs';
+import { decimate } from './lib/decimate.mjs';
 
 const arg = (name, def) => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : def; };
+const flag = (name) => process.argv.includes(name);
+// Squad LOD (scripts/roblox/squad.mjs): --tris N decimates to N triangles, --tex-cap N caps textures, --no-fallback skips the 2D renders
+// (squad.mjs builds posters itself), --user overrides the config's userId, --quiet silences the report.
+const TRIS = +arg('--tris', 0), TEX_CAP = +arg('--tex-cap', 0), NO_FALLBACK = flag('--no-fallback'), QUIET = flag('--quiet');
+if (QUIET) console.log = () => {};
 const SRC = path.resolve(ROOT, arg('--src', 'assets-src/roblox'));
 const OUT = path.resolve(ROOT, arg('--out', 'public/roblox'));
 const CONFIG = path.resolve(ROOT, arg('--config', 'scripts/roblox/avatar.config.json'));
@@ -25,11 +31,12 @@ const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const rel = (p) => path.relative(ROOT, p).replace(/\\/g, '/');
 
 async function main() {
-  const cfg = readJson(CONFIG);
+  const cfg = fs.existsSync(CONFIG) ? readJson(CONFIG) : { userId: +arg('--user', 0) };
   const meta = fs.existsSync(path.join(SRC, 'meta.json')) ? readJson(path.join(SRC, 'meta.json')) : {};
   const mtls = parseMtl(fs.readFileSync(path.join(SRC, 'avatar.mtl'), 'utf8'));
   const mesh = buildMesh(parseObj(fs.readFileSync(path.join(SRC, 'avatar.obj'), 'utf8')));
   canonicalize(mesh);
+  for (const g of mesh.groups) g.srcTris = g.tris.length / 3; // config expectTris refer to the SOURCE mesh, whatever the LOD
   T.lap('parse');
 
   // ---------- fingerprint ----------
@@ -43,8 +50,24 @@ async function main() {
   const { skin, lm, pivots } = rig;
   T.lap('classify');
 
+  // ---------- LOD (squad packs) ----------
+  // After classification, so the rig is exactly the full-resolution one. Collapses never cross a bone / parent / halo boundary and
+  // never move a blended sleeve vertex far in weight; the head and the halo rays are protected.
+  if (TRIS && totalTris > TRIS) {
+    const P = mesh.P;
+    const r = decimate(mesh, TRIS, {
+      protect: (c) => (skin.phase[c] ? 1e3 : P[3 * c + 1] > lm.neckY - 0.15 ? 6 : 1),
+      canCollapse: (u, v) => skin.bone[u] === skin.bone[v] && skin.parent[u] === skin.parent[v] && !skin.phase[u] && !skin.phase[v] && Math.abs(skin.weight[u] - skin.weight[v]) < 40,
+    });
+    mesh.groups = mesh.groups.filter((g) => g.tris.length);
+    // triHalo was per source triangle; a triangle is a halo ray exactly when its corners carry a halo phase.
+    rig.triHalo = mesh.groups.map((g) => Uint8Array.from({ length: g.tris.length / 3 }, (_, t) => (skin.phase[g.tris[3 * t]] ? 1 : 0)));
+    console.log('lod: ' + r.from + ' -> ' + r.to + ' tris');
+  }
+  T.lap('lod');
+
   // ---------- materials ----------
-  const mtlTris = new Map(); for (const g of mesh.groups) mtlTris.set(g.mtl, (mtlTris.get(g.mtl) || 0) + g.tris.length / 3);
+  const mtlTris = new Map(); for (const g of mesh.groups) mtlTris.set(g.mtl, (mtlTris.get(g.mtl) || 0) + g.srcTris);
   const cands = []; // one per OBJ material (in order of first use)
   for (const [mtlName, tris] of mtlTris) {
     const m = mtls.get(mtlName);
@@ -64,7 +87,7 @@ async function main() {
     else if (pbr && mm.mapNs && resolveTexture(SRC, mm.mapNs)) gloss = clamp((1 - (await meanGreen(resolveTexture(SRC, mm.mapNs))) / 255) * 0.85, 0.05, 0.9);
     else gloss = 0.3;
     const tex = file
-      ? await processTexture(file, { flatten, kd: mm.kd, size: entryOk ? entry.size : undefined, encode: entryOk ? entry.encode : undefined })
+      ? await processTexture(file, { flatten, kd: mm.kd, size: entryOk ? entry.size : undefined, encode: entryOk ? entry.encode : undefined, cap: TEX_CAP })
       : { solid: mm.kd, srcSize: [0, 0], hasAlpha: false };
     cands.push({
       mtl: mtlName, name: (entryOk && entry.name) || mtlName.replace(/Mtl$/, '').toLowerCase(), tris, tex, flatten, file: file && path.basename(file),
@@ -148,11 +171,11 @@ async function main() {
 
   // ---------- 2D fallback ----------
   const renderFile = path.join(SRC, 'render-720.png');
-  if (!fs.existsSync(renderFile)) throw new Error(`${rel(renderFile)} is missing (run npm run roblox:fetch)`);
-  const trimmed = await sharp(renderFile).trim({ threshold: 1 }).toBuffer({ resolveWithObject: true });
-  console.log(`fallback: trimmed render ${trimmed.info.width}x${trimmed.info.height}`);
+  if (!NO_FALLBACK && !fs.existsSync(renderFile)) throw new Error(`${rel(renderFile)} is missing (run npm run roblox:fetch)`);
+  const trimmed = NO_FALLBACK ? null : await sharp(renderFile).trim({ threshold: 1 }).toBuffer({ resolveWithObject: true });
+  if (trimmed) console.log(`fallback: trimmed render ${trimmed.info.width}x${trimmed.info.height}`);
   const fallbackFiles = new Map(); const fallback = [];
-  for (const [w, h] of [[150, 220], [300, 440]]) {
+  for (const [w, h] of NO_FALLBACK ? [] : [[150, 220], [300, 440]]) {
     const base = await sharp(trimmed.data).resize(w, h, { fit: 'contain', position: 'bottom', background: { r: 0, g: 0, b: 0, alpha: 0 } }).toBuffer();
     const entry = { width: w, height: h };
     for (const [ext, fn] of [['avif', (s) => s.avif({ quality: 60 })], ['webp', (s) => s.webp({ quality: 82, alphaQuality: 90 })], ['png', (s) => s.png({ palette: true, quality: 90 })]]) {
