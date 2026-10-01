@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-*
+.env
+.env.*
+!.env.example
+src/data/generated.json
+.qa
+*.log
+.DS_Store
+.claude/
+# Generated QA output (npm run qa:shots / Lighthouse); regenerate rather than version binaries
+docs/screens
+docs/lighthouse
+assets-src/roblox/
