@@ -244,7 +244,7 @@ export const site: SiteConfig = {
     },
   },
 
-  sourceUrl: null, // TODO(me): public repo URL once it exists — the footer shows "Source" only when set
+  sourceUrl: 'https://github.com/Makogai/mrh.lol',
 
   seo: {
     title: 'MrHarold — code, games, and a habit of looking up', // EDITABLE
