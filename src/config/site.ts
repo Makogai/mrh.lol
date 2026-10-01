@@ -156,7 +156,7 @@ export const site: SiteConfig = {
     //   'status' = online / in game / offline, never the game name (current default)
     //   'game'   = also the game name and a "View game" link while you are in a game
     //   'off'    = no presence at all (the badge stays neutral and nothing is fetched)
-    presence: 'status',
+    presence: 'game',
     presenceEndpoint: '/api/roblox-presence', // proxied same-origin by nginx.conf and vite.config.ts (Roblox sends no CORS)
     assetsBase: '/roblox/',
     card: {
