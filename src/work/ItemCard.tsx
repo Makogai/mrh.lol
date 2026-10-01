@@ -25,7 +25,7 @@ function readoutsFor(theme: ThemeDef, project: Project, config: unknown): Readou
     const filled = (config as { commands?: unknown[] } | null)?.commands?.length;
     return [
       { value: String(filled || a.discordCommands), label: 'Commands' },
-      { value: 'ATLAS', label: 'Same data as' },
+      { value: String(a.minerals), label: 'Minerals' }, // the bot answers from the same dataset as the Atlas
     ];
   }
   return [];

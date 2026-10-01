@@ -69,7 +69,8 @@
 .theme-discord-bot { --art-min: 360px; }
 @media (width >= 64rem) { .theme-discord-bot { --art-min: 0px; } .theme-discord-bot[data-density] .bot-embed { display: none; } }
 .theme-discord-bot .art-bot { display: flex; flex-direction: column; gap: 10px; padding: 14px; background: #1e1f22; }
-.theme-discord-bot .bot-stage { flex: 1; min-height: 0; display: grid; gap: 10px; align-content: start; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+/* max-content rows: overflow:hidden on the palette zeroes its automatic minimum, so auto rows let it overlap the embed. */
+.theme-discord-bot .bot-stage { flex: 1; min-height: 0; display: grid; gap: 10px; align-content: start; grid-auto-rows: max-content; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
 @container item (min-width: 520px) { .theme-discord-bot .bot-stage { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
 @container item (max-width: 519px) { .theme-discord-bot .bot-palette li:nth-child(n + 5) { display: none; } }
 .theme-discord-bot .bot-palette { position: relative; align-self: start; padding: 6px; border-radius: 8px; background: #111214; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06); overflow: hidden; }
@@ -79,10 +80,11 @@
 .theme-discord-bot .bot-palette li span { font-size: 12px; color: var(--color-ink-300); overflow: hidden; text-overflow: ellipsis; }
 .theme-discord-bot .bot-hl { position: absolute; left: 6px; right: 6px; top: 6px; height: 26px; border-radius: 5px; background: rgb(88 101 242 / 0.28); transform: translateY(52px); }
 /* Empty state: the real command count over skeleton bars (clearly not text). */
-.theme-discord-bot .bot-empty { display: grid; gap: 8px; padding: 10px; }
-.theme-discord-bot .bot-empty b { font: 800 34px/1 var(--font-mono); color: var(--color-ink-100); }
+.theme-discord-bot .bot-empty { display: flex; align-items: baseline; gap: 10px; padding: 6px 8px; }
+.theme-discord-bot .bot-empty b { font: 800 22px/1 var(--font-mono); color: var(--color-ink-100); }
 .theme-discord-bot .bot-empty span { font: 500 11px/14px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ink-400); }
-.theme-discord-bot .bot-empty i { display: block; height: 8px; width: 100%; border-radius: 4px; background: rgb(255 255 255 / 0.07); }
+/* Skeleton bars only read as filler on a one-line empty state. */
+.theme-discord-bot .bot-empty i { display: none; height: 8px; width: 100%; border-radius: 4px; background: rgb(255 255 255 / 0.07); }
 .theme-discord-bot .bot-empty i:nth-of-type(2) { width: 72%; }
 .theme-discord-bot .bot-empty i:nth-of-type(3) { width: 46%; }
 .theme-discord-bot .bot-embed { min-width: 0; }

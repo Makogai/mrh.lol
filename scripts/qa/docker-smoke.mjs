@@ -155,22 +155,22 @@ try {
   }
 
   // 3D avatar assets and the presence proxy (nginx.conf; docs/PLAYER_INTEGRATION.md §5).
-  const manifest = await get('/roblox/avatar.json', { 'Accept-Encoding': 'gzip' });
-  check('/roblox/avatar.json → no-cache', manifest.status === 200 && manifest.headers['cache-control'] === 'no-cache', `${manifest.status} ${manifest.headers['cache-control']}`);
+  const manifest = await get('/roblox/squad/me/avatar.json', { 'Accept-Encoding': 'gzip' });
+  check('/roblox/squad/me/avatar.json → no-cache', manifest.status === 200 && manifest.headers['cache-control'] === 'no-cache', `${manifest.status} ${manifest.headers['cache-control']}`);
   let binUrl = null;
   try { binUrl = JSON.parse(manifest.body.toString()).bin.url; } catch { /* reported below */ }
   if (!binUrl) check('avatar.json names a .bin', false);
   else {
-    const bin = await get(`/roblox/${binUrl}`, { 'Accept-Encoding': 'gzip' });
-    check(`/roblox/${binUrl} → immutable + gzip`, bin.status === 200 && /immutable/.test(bin.headers['cache-control'] ?? '') && bin.headers['content-encoding'] === 'gzip', `${bin.wire} B on the wire for ${bin.body.length} B`);
+    const bin = await get(`/roblox/squad/me/${binUrl}`, { 'Accept-Encoding': 'gzip' });
+    check(`/roblox/squad/me/${binUrl} → immutable + gzip`, bin.status === 200 && /immutable/.test(bin.headers['cache-control'] ?? '') && bin.headers['content-encoding'] === 'gzip', `${bin.wire} B on the wire for ${bin.body.length} B`);
   }
   const tex = /"url":"(tex\/[^"]+)"/.exec(manifest.body.toString())?.[1];
   if (tex) {
-    const t = await get(`/roblox/${tex}`);
-    check(`/roblox/${tex} → immutable`, t.status === 200 && /immutable/.test(t.headers['cache-control'] ?? ''), t.headers['cache-control']);
+    const t = await get(`/roblox/squad/me/${tex}`);
+    check(`/roblox/squad/me/${tex} → immutable`, t.status === 200 && /immutable/.test(t.headers['cache-control'] ?? ''), t.headers['cache-control']);
   }
-  const poster = await get('/roblox/fallback/avatar-300x440.avif');
-  check('/roblox/fallback/* → 200, default (1 day) cache', poster.status === 200 && poster.headers['cache-control'] === 'public, max-age=86400', `${poster.status} ${poster.headers['cache-control']}`);
+  const poster = await get('/roblox/squad/me/poster-360.23bc8468.avif');
+  check('/roblox/squad/me/poster-360.*.avif → immutable', poster.status === 200 && /immutable/.test(poster.headers['cache-control'] ?? ''), `${poster.status} ${poster.headers['cache-control']}`);
 
   const pres = await get('/api/roblox-presence');
   let presJson = null;
