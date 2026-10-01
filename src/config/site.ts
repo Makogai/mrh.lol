@@ -268,9 +268,9 @@ export const site: SiteConfig = {
     // Owner: CS2 is the favourite; also Roblox and War Thunder. Game names appear as plain text only — no logos or art.
     order: ['cs2', 'roblox', 'warThunder'],
     // TODO(me): `rank` = Premier rating (unknown), plus whichever of hours / role / map you want shown.
-    cs2: { mode: 'Premier', rank: null, hours: null, role: null, map: null },
+    cs2: { mode: 'Premier', rank: null, hours: '540', role: null, map: 'de_mirage' },
     // TODO(me): e.g. { nation: 'Germany', topBR: '11.7', mainVehicle: '…' }
-    warThunder: { nation: null, topBR: null, mainVehicle: null },
+    warThunder: { nation: 'USA', topBR: '12.0', mainVehicle: 'M1A1 HC' },
   },
 
   // Owner's own Roblox account (live avatar pipeline: scripts/roblox/, assets under public/roblox/).
