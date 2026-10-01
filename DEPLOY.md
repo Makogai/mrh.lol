@@ -111,7 +111,7 @@ practices and SEO.
 docker build -t mrh-lol . && docker run --rm -p 8080:80 mrh-lol     # then open http://localhost:8080
 # or, build + run + assert everything in section 4 against the container:
 npm run qa:docker                  # add -- --keep to leave it running
-npm run qa:lighthouse              # mobile + desktop against http://localhost:8080
+npm run qa:lighthouse -- --runs 5   # 5x mobile + desktop against http://localhost:8080 (worst run is gated)
 ```
 
 `docker build` runs `npm run build`, which includes the typecheck and the 150 KB gzip JavaScript budget; a failure
