@@ -1,0 +1,62 @@
+/* Contact section rules that utilities can't express: layered blooms, the decorative trace and its pulse keyframes,
+   and the off-screen honeypot. Everything is namespaced ct- and wrapped in @layer components so utilities still win. */
+@layer components {
+  /* Section bloom: teal at 5 % off to the lower left, so the Discord card sits in its light. A background (not a
+     pseudo-element or a transformed box), so it can never widen the document (trap #2). */
+  .ct-bloom {
+    background-image: radial-gradient(64rem 44rem at 20% 70%, rgb(62 224 208 / 0.05), transparent 70%);
+  }
+
+  /* Discord card: teal hairline glow at rest (subtler than --shadow-glow-teal), full strength on hover/focus-within. */
+  .ct-discord {
+    background:
+      radial-gradient(36rem 22rem at 100% 0%, rgb(62 224 208 / 0.08), transparent 62%),
+      radial-gradient(26rem 18rem at 0% 100%, rgb(255 194 71 / 0.05), transparent 66%),
+      var(--color-iron-900);
+    box-shadow: 0 0 0 1px rgb(62 224 208 / 0.14), 0 8px 48px -16px rgb(62 224 208 / 0.24);
+    transition: box-shadow var(--dur-base) var(--ease-out);
+  }
+  .ct-discord:hover,
+  .ct-discord:focus-within {
+    box-shadow: var(--shadow-glow-teal);
+  }
+
+  /* The form card: an iron card with a faint amber bloom top-right, mirroring the Discord card's teal. */
+  .ct-form-card {
+    background:
+      radial-gradient(34rem 20rem at 100% 0%, rgb(255 194 71 / 0.05), transparent 64%),
+      var(--color-iron-900);
+    box-shadow: var(--shadow-hairline);
+  }
+
+  /* Decorative PCB trace in the Discord card's corner — the hero's language in miniature. A copy sends one amber pulse
+     down it. Only stroke-dashoffset animates (never a transform), so nothing can leave the card's bounds. */
+  .ct-trace-base { stroke: rgb(238 242 251 / 0.1); }
+  .ct-trace-pad {
+    fill: var(--color-iron-900);
+    stroke: rgb(238 242 251 / 0.18);
+    transition: stroke var(--dur-base) var(--ease-out), fill var(--dur-base) var(--ease-out);
+  }
+  .ct-discord:hover .ct-trace-pad { stroke: rgb(62 224 208 / 0.6); }
+  .ct-discord[data-copy="copied"] .ct-trace-pad { stroke: var(--color-amber-400); fill: rgb(255 194 71 / 0.25); }
+  .ct-trace-pulse { stroke: var(--color-amber-400); stroke-dasharray: 0.14 2; stroke-dashoffset: 0.14; opacity: 0; }
+  @media (prefers-reduced-motion: no-preference) {
+    .ct-discord[data-copy="copied"] .ct-trace-pulse { animation: ct-pulse 900ms var(--ease-out) both; }
+  }
+  @keyframes ct-pulse {
+    0% { stroke-dashoffset: 0.14; opacity: 1; }
+    85% { opacity: 1; }
+    100% { stroke-dashoffset: -1.02; opacity: 0; }
+  }
+
+  /* Honeypot. Off-screen rather than display:none because some bots skip fields they know are hidden. Absolutely
+     positioned to the left, so it can't create horizontal scroll (content never overflows to the left in LTR). */
+  .ct-hp {
+    position: absolute;
+    left: -10000px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+}
