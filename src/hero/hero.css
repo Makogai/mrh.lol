@@ -46,7 +46,9 @@
   }
   .hero-fx[data-ready] {
     opacity: 1;
-    transition-duration: 900ms; /* … slow in: the effect arrives behind already-painted type (spec §7.6) */
+    /* … slower in, on the entrance token: the effect arrives behind already-painted type (spec §7.6). It was 900 ms, which
+       stretched the visual change (and Speed Index) well past the growth itself. */
+    transition-duration: var(--dur-enter);
   }
   .hero[data-fx="off"] .hero-fx { opacity: 0; }
   .hero-fx > canvas {

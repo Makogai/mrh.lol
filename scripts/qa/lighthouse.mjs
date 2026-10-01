@@ -12,6 +12,10 @@ import { resolve } from 'node:path';
 const args = process.argv.slice(2);
 const outFlag = args.indexOf('--out');
 const runsFlag = args.indexOf('--runs');
+// GPU off by default: PageSpeed Insights and CI runners have no GPU, and on a dev box a game or browser hogging it delays
+// the first compositor frame by whole seconds (observed FCP jumped 0.35 s -> 1.4 / 2.4 s on identical builds), which
+// Lantern then scales into the simulated numbers. Pass --gpu to measure with the real GPU anyway.
+const USE_GPU = args.includes('--gpu');
 const RUNS = runsFlag >= 0 ? Math.max(1, Number(args[runsFlag + 1]) || 1) : 1;
 const url = args.find((a, i) => !a.startsWith('--') && i !== outFlag + 1 && i !== runsFlag + 1) ?? 'http://localhost:8080';
 const outDir = resolve(outFlag >= 0 ? args[outFlag + 1] : `.qa/${process.env.MRH_PKG ?? 'lead'}/lighthouse`);
@@ -27,7 +31,7 @@ function run(mode, n = 0) {
   // path contains one.
   const cmd = [
     'npx -y', LIGHTHOUSE, `"${url}"`,
-    `--chrome-path="${chrome}"`, '--chrome-flags="--headless=new --no-first-run"',
+    `--chrome-path="${chrome}"`, `--chrome-flags="--headless=new --no-first-run${USE_GPU ? '' : ' --disable-gpu'}"`,
     '--output=json', `--output-path="${file}"`, '--quiet',
     '--only-categories=performance,accessibility,best-practices,seo',
     ...(mode === 'desktop' ? ['--preset=desktop'] : []),
