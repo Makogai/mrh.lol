@@ -1,19 +1,23 @@
 import { Hero } from './hero/Hero';
-import { About } from './sections/About';
-import { PlayerSection } from './roblox/PlayerSection';
-import { Work } from './sections/Work';
+import { Loadout } from './loadout/Loadout';
 import { Contact } from './contact/Contact';
-import { Footer } from './sections/Footer';
+import { Lobby } from './squad/Lobby';
+import { Footer } from './shell/Footer';
+import { SystemBar } from './shell/SystemBar';
+import { Work } from './work/Work';
 
-// Landmarks: the hero is the page <header> (banner), sections live in <main>, then <footer>.
+// Page order (V2_DESIGN §1): bar · 00 MAIN MENU · 01 LOADOUT · 02 BUILDS · 03 LOBBY · 04 COMMS · footer.
+// The system bar is the FIRST child and sits outside every animated wrapper (trap #1: a transformed ancestor would become the
+// containing block of its `position: fixed`). Landmarks: the hero is the page <header> (banner), sections live in <main>.
 export function App() {
   return (
     <>
+      <SystemBar />
       <Hero />
       <main id="main">
-        <About />
-        <PlayerSection />
+        <Loadout />
         <Work />
+        <Lobby />
         <Contact />
       </main>
       <Footer />

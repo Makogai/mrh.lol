@@ -1,4 +1,4 @@
-/* Hero + Forge Board host (BUILD_PLAN §7.1, §8.1). Tokens only; every rule is in `components` so utilities still win. */
+/* 00 MAIN MENU: hero + Forge Board host + menu (BUILD_PLAN §7.1, §8.1; V2_DESIGN §2). Tokens only; every rule is in `components` so utilities still win. */
 @layer components {
   .hero {
     position: relative;
@@ -48,7 +48,7 @@
     opacity: 1;
     /* … slower in, on the entrance token: the effect arrives behind already-painted type (spec §7.6). It was 900 ms, which
        stretched the visual change (and Speed Index) well past the growth itself. */
-    transition-duration: var(--dur-enter);
+    transition-duration: 600ms;
   }
   .hero[data-fx="off"] .hero-fx { opacity: 0; }
   .hero-fx > canvas {
@@ -64,12 +64,12 @@
     position: relative;
     z-index: 2;
     container-type: inline-size; /* the name is sized from this box's width via cqi */
-    padding-top: 128px;
-    /* 96 on phones: the scroll hint lives in this bottom band and must not touch the CTA row (it is 72 px tall). */
-    padding-bottom: 96px;
+    /* The system bar is hidden over the hero, so phones need no top inset beyond breathing room. */
+    padding-top: 96px;
+    padding-bottom: 48px; /* no scroll hint on phones: the menu is the call to action */
   }
-  @media (width >= 48rem) { .hero-content { padding-bottom: 80px; } }
-  @media (width >= 80rem) { .hero-content { padding-bottom: 96px; } }
+  @media (width >= 48rem) { .hero-content { padding-top: 128px; padding-bottom: 80px; } }
+  @media (width >= 64rem) { .hero-content { padding-bottom: 96px; } }
   @media (width >= 120rem) { .hero-content { padding-bottom: 128px; } }
 
   /* Fit-to-container, hard-stopped: PROMPT's clamp(3rem, 12vw, 11rem) intent, made exact. --name-em is set inline from
@@ -118,37 +118,113 @@
   }
 
   .hero-identity {
-    max-width: 30ch;
+    max-width: 28ch;
     margin: 24px 0 0;
-    font-size: clamp(1.125rem, 0.95rem + 0.9vw, 1.75rem);
+    font-size: clamp(1.125rem, 0.95rem + 0.9vw, 1.75rem); /* 18px at 390 */
     font-weight: 500;
     line-height: 1.35;
     color: var(--color-ink-300);
     text-wrap: balance;
   }
-  .hero-cta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    width: fit-content;
-    max-width: 100%;
-    margin-top: 40px;
+  @media (width >= 80rem) { .hero-identity { margin-top: 32px; } }
+
+  /* ── main menu: four rows, BUILDS primary ──
+     390: full-width 56px rows, 20px labels. 768+: 520px wide, 64px rows, 32px labels. Entrance: rows stagger 70ms (opacity +
+     12px y, 560ms) — a plain CSS animation, so it runs from first paint with or without JS; the h1 never animates. */
+  .hero-menu { margin-top: 32px; }
+  @media (width >= 48rem) { .hero-menu { width: min(100%, 520px); margin-top: 40px; } }
+  .hero-menu ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+
+  .hm-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+    padding-inline: 16px;
+    border-radius: var(--radius-pad);
+    background-color: color-mix(in srgb, var(--color-ink-100) 3%, transparent);
+    box-shadow: var(--shadow-hairline);
+    color: var(--color-ink-100);
+    text-decoration: none;
+    transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
   }
-  /* On phones the row spans the name's width, so the buttons grow to line up with it (and stack full-width at 320). */
-  @media (width < 30rem) { .hero-cta { width: 100%; } }
-  @media (width >= 80rem) {
-    .hero-identity { margin-top: 32px; }
-    .hero-cta { margin-top: 48px; }
+  /* The primary row's 2px amber bar is an inset shadow, so it follows the radius. */
+  .hm-row[data-primary] {
+    box-shadow: var(--shadow-hairline), inset 2px 0 0 var(--color-amber-400);
+    background-color: color-mix(in srgb, var(--color-amber-400) 6%, transparent);
   }
+  .hm-row:hover,
+  .hm-row:focus-visible { background-color: color-mix(in srgb, var(--color-ink-100) 7%, transparent); box-shadow: var(--shadow-hairline-strong); }
+  .hm-row[data-primary]:hover,
+  .hm-row[data-primary]:focus-visible { background-color: color-mix(in srgb, var(--color-amber-400) 11%, transparent); box-shadow: var(--shadow-hairline-strong), inset 2px 0 0 var(--color-amber-400); }
+  .hm-idx { font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1; color: var(--color-ink-500); }
+  .hm-label {
+    font-size: var(--text-xl); /* 20px */
+    line-height: 1;
+    font-weight: 800;
+    font-stretch: 125%;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+  .hm-chev { color: var(--color-ink-400); transition: color var(--dur-fast) var(--ease-out); }
+  .hm-row:hover .hm-chev, .hm-row:focus-visible .hm-chev { color: var(--color-amber-400); }
+  /* The hairline that draws from the row toward the canvas edge. Only where the layout leaves room (>= 768) and a real hover
+     exists; it is clipped by the hero (overflow: clip), never wider than the page, and revealed with clip-path, not a transform. */
+  .hm-line { display: none; }
+  @media (width >= 48rem) {
+    .hm-row { height: 64px; grid-template-columns: 32px 1fr auto; }
+    .hm-label { font-size: 32px; }
+    .hm-line {
+      display: block;
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      width: 100vw;
+      height: 1px;
+      pointer-events: none;
+      background: linear-gradient(90deg, color-mix(in srgb, var(--color-amber-400) 70%, transparent), transparent 70%);
+      clip-path: inset(0 100% 0 0);
+      transition: clip-path var(--dur-enter) var(--ease-out);
+    }
+    .hm-row:hover .hm-line, .hm-row:focus-visible .hm-line { clip-path: inset(0); }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    /* The label slides 8px with the spring. Only a pointer that can hover gets it; focus gets it too (keyboard parity). */
+    .hm-label { transition: transform var(--dur-spring) var(--ease-spring); }
+    .hm-row:hover .hm-label, .hm-row:focus-visible .hm-label { transform: translate3d(8px, 0, 0); }
+    .hero-menu li, .hero-chip { animation: hero-rise var(--dur-enter) var(--ease-out) both; animation-delay: calc(var(--i, 0) * var(--stagger)); }
+  }
+  /* Reduced motion: opacity only, same stagger. */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-menu li, .hero-chip { animation: hero-fade var(--dur-enter) linear both; animation-delay: calc(var(--i, 0) * var(--stagger)); }
+  }
+  @keyframes hero-rise { from { opacity: 0; transform: translate3d(0, 12px, 0); } to { opacity: 1; transform: none; } }
+  @keyframes hero-fade { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ── player chip (SIGNED IN AS): in the flow under the menu below 1024, floating bottom-right from 1024 up ── */
+  .hero-chip { margin-top: 16px; }
+  @media (width >= 48rem) { .hero-chip { width: min(100%, 520px); } }
+  @media (width >= 64rem) {
+    .hero-chip {
+      position: absolute;
+      right: max(var(--gutter), env(safe-area-inset-right));
+      bottom: 96px;
+      width: 320px;
+      margin-top: 0;
+    }
+  }
+  @media (width >= 120rem) { .hero-chip { bottom: 128px; } }
 
   /* ── scroll hint ── */
   .hero-hint {
+    display: none; /* phones: the menu is the cue */
     position: absolute;
     z-index: 2;
-    bottom: 8px;
-    /* the content column's right edge: the gutter, or the centred 1440 px column on very wide screens */
-    right: max(var(--gutter), calc((100% - 90rem) / 2));
-    display: flex;
+    bottom: 24px;
+    left: 50%;
+    translate: -50% 0; /* the individual property, so it never clashes with the hover/entrance transforms of anything else */
     flex-direction: column;
     align-items: center;
     gap: 8px;
@@ -164,7 +240,7 @@
     color: var(--color-ink-400);
     transition: color var(--dur-fast) var(--ease-out);
   }
-  @media (width >= 48rem) { .hero-hint { bottom: 24px; } }
+  @media (width >= 64rem) { .hero-hint { display: flex; } }
   .hero-hint:hover { color: var(--color-ink-100); }
   /* 1×48 track, 6 px amber segment drifting down. The segment is a background layer; the box never moves. */
   .hero-hint-track {

@@ -1,5 +1,6 @@
-/* Owned by scaffold. Design tokens + base layer. Packages consume tokens; they never edit this file. */
+/* Owned by the shell package. Design tokens + base layer. Packages consume tokens; they never edit this file. */
 @import "tailwindcss" source("../");
+@import "./frame.css";
 
 /* ── Fonts: self-hosted, subset by scripts/gen-fonts.mjs (npm run gen:fonts) to ASCII + the typographic marks the copy uses,
    with the variable axes cut to the ranges the CSS really asks for. The h1 (LCP) is set in Mona Sans and its file is on the
@@ -62,6 +63,14 @@
   --color-ink-400: #7d879e;
   --color-ink-500: #5a6379;
   --color-coral-400: #ff8f80;
+  /* App / game accents (V2_DESIGN §4). Local only: each lives inside one tile or card, never as a site-wide colour. */
+  --color-tan-400: #d9b26a;
+  --color-phosphor-400: #b7e07a;
+  --color-blurple-500: #5865f2;
+  --color-umber-950: #0c0a07;
+  --color-umber-900: #1b140b;
+  --color-discord-900: #1e1f22;
+  --color-discord-800: #2b2d31;
 
   --font-sans: "Mona Sans", "Mona Sans Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Martian Mono", "Martian Mono Fallback", ui-monospace, monospace;
@@ -146,7 +155,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  /* The ONLY fixed element on the site. body is never transformed, so this stays viewport-anchored (trap #1). */
+  /* Fixed overlays: this grain layer and the system bar (src/shell/SystemBar.tsx, rendered outside every animated wrapper).
+     body is never transformed, so both stay viewport-anchored (trap #1). */
   body::after {
     content: "";
     position: fixed;

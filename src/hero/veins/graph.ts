@@ -1,5 +1,5 @@
 // Engine-side graph tools (BUILD_PLAN §7.3): a 48 px CSR edge grid for the cursor, and a typed-array Dijkstra.
-// Nothing here allocates after construction — Dijkstra runs on every click, every lantern move and every flight.
+// Nothing here allocates after construction — Dijkstra runs on every click and every lantern move.
 import type { Network } from './types';
 
 const CELL = 48;

@@ -278,17 +278,21 @@ function silkscreenSvg(chip) {
 async function buildOg() {
   const W = 1200, H = 630;
   const hostLabel = new URL(site.origin).hostname.toUpperCase();
-  const interests = site.interests.join(' · ').toUpperCase();
 
   // Text first: its glyph boxes define the chip (the keep-out the network must respect), exactly like the live hero.
   const brand = await shape({ file: MARTIAN, text: hostLabel, axes: { wght: 500 }, size: 22, tracking: 0.14, x: 72, baseline: 84 });
-  const tags = await shape({ file: MARTIAN, text: interests, axes: { wght: 500 }, size: 16, tracking: 0.08, x: 1128, baseline: 84, anchor: 'end' });
+  // The four pillar sigils (programming, games, anime, training) sit top-right where the interest tags used to be. Same path
+  // data as the site (src/components/sigil-paths.ts), drawn at 28px with the 1.5 stroke scaled with them.
+  const { PILLAR_PATHS } = await import(pathToFileURL(resolve(root, 'src/components/sigil-paths.ts')).href);
+  const SIG = 28, SIG_GAP = 20, sigKeys = ['programming', 'games', 'anime', 'training'];
+  const sigW = sigKeys.length * SIG + (sigKeys.length - 1) * SIG_GAP;
+  const sigBox = { x: 1128 - sigW, y: 60, w: sigW, h: SIG };
   const name = await shape({ file: MONA, text: site.displayName, axes: { wdth: 125, wght: 850 }, size: 150, tracking: -0.045, x: 72, baseline: 500 });
   // The identity may hold an NBSP (a DOM line-break hint); the outline pipeline wants a plain space.
   const ident = await shape({ file: MONA, text: site.identity.replace(/\u00a0/g, ' '), axes: { wdth: 100, wght: 500 }, size: 34, x: 72, baseline: 556 });
 
   const chip = pad(unionBox(name.box, ident.box), 24);
-  const avoid = [pad(brand.box, 12), pad(tags.box, 12)];
+  const avoid = [pad(brand.box, 12), pad(sigBox, 12)];
   const { net, NodeKind } = await loadNetwork(chip, avoid, W, H);
 
   // (No XML comments inside the template: `--` is illegal in them and resvg is strict.)
@@ -320,7 +324,7 @@ async function buildOg() {
 ${net && net.nodeCount ? networkSvg(net, NodeKind, chip) : ''}
 ${silkscreenSvg(chip)}
 <path d="${brand.d}" fill="${C.amber400}"/>
-<path d="${tags.d}" fill="${C.ink400}"/>
+${sigKeys.map((k, i) => `<g transform="translate(${sigBox.x + i * (SIG + SIG_GAP)} ${sigBox.y}) scale(${SIG / 24})" fill="none" stroke="${C.ink400}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="${PILLAR_PATHS[k]}"/></g>`).join(String.fromCharCode(10))}
 <path d="${name.d}" fill="${C.ink100}"/>
 <path d="${ident.d}" fill="${C.ink300}"/>
 <rect width="${W}" height="${H}" filter="url(#grain)" opacity="0.04"/>

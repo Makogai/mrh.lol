@@ -1,10 +1,12 @@
-// JS budget gate (PROMPT §6: total JS < 150 KB gzipped). Exits 1 above 153,600 bytes. Run by `npm run bundle`.
+// JS budget gate (V2_DESIGN §9; PROMPT §6 was 150 KB total). Exits 1 when, in gzip: the main (eagerly loaded) JS > 105 KB,
+// any lazy chunk > 16 KB, or the total > 140 KB. Run by `npm run bundle`.
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
-const LIMIT = 150 * 1024;
+const KB = 1024;
+const LIMITS = { main: 105 * KB, lazyChunk: 16 * KB, total: 140 * KB };
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pkg = process.env.MRH_PKG;
 const outDir = resolve(root, pkg ? `dist-${pkg}` : 'dist');
@@ -18,9 +20,11 @@ const names = await readdir(assets).catch(() => {
   throw new Error(`budget: ${assets} not found — run the client build first`);
 });
 
-// Files the HTML loads eagerly (entry script + modulepreloads). Everything else is a lazy chunk, i.e. the hero engine.
+// Files the HTML loads eagerly: the entry script and modulepreloads. The entry is started by an inline loader that receives its
+// URL as a string (vite.config.ts deferEntryUntilPaint), so match any /assets/*.js path in the HTML, not just src/href attributes.
+// Everything else is a lazy chunk: the hero engine, the squad stage.
 const html = await readFile(resolve(outDir, 'index.html'), 'utf8');
-const eager = new Set([...html.matchAll(/(?:src|href)="\/assets\/([^"]+\.js)"/g)].map((m) => m[1]));
+const eager = new Set([...html.matchAll(/\/assets\/([^"'\s)]+\.js)/g)].map((m) => m[1]));
 
 const js = [];
 for (const name of names.filter((n) => n.endsWith('.js'))) {
@@ -31,6 +35,7 @@ js.sort((a, b) => b.gz - a.gz);
 
 const total = js.reduce((s, f) => s + f.gz, 0);
 const lazyTotal = js.filter((f) => f.lazy).reduce((s, f) => s + f.gz, 0);
+const mainTotal = total - lazyTotal;
 
 const w = Math.max(...js.map((f) => f.name.length), 4);
 console.log(`\nJS budget — ${pkg ? `dist-${pkg}` : 'dist'}/assets`);
@@ -38,7 +43,8 @@ console.log(`${pad('file', w)}  ${lpad('raw', 11)}  ${lpad('gzip', 11)}  kind`);
 for (const f of js) {
   console.log(`${pad(f.name, w)}  ${lpad(kb(f.raw), 11)}  ${lpad(kb(f.gz), 11)}  ${f.lazy ? 'lazy' : 'eager'}`);
 }
-console.log(`${pad('TOTAL', w)}  ${lpad(kb(js.reduce((s, f) => s + f.raw, 0)), 11)}  ${lpad(kb(total), 11)}  limit ${kb(LIMIT)} (${((total / LIMIT) * 100).toFixed(1)} %)`);
+console.log(`${pad('TOTAL', w)}  ${lpad(kb(js.reduce((s, f) => s + f.raw, 0)), 11)}  ${lpad(kb(total), 11)}  limit ${kb(LIMITS.total)} (${((total / LIMITS.total) * 100).toFixed(1)} %)`);
+console.log(`main (eager) JS: ${kb(mainTotal)} gzip, limit ${kb(LIMITS.main)}`);
 console.log(`lazy chunk share: ${kb(lazyTotal)} gzip = ${total ? ((lazyTotal / total) * 100).toFixed(1) : '0.0'} % of total JS`);
 
 // Informational only.
@@ -53,8 +59,12 @@ if (others.length) {
   }
 }
 
-if (total > LIMIT) {
-  console.error(`\nFAIL: total JS ${total} bytes gzip exceeds the ${LIMIT} byte budget`);
+const failures = [];
+if (mainTotal > LIMITS.main) failures.push(`main JS ${kb(mainTotal)} gzip exceeds ${kb(LIMITS.main)}`);
+for (const f of js.filter((x) => x.lazy && x.gz > LIMITS.lazyChunk)) failures.push(`lazy chunk ${f.name} ${kb(f.gz)} gzip exceeds ${kb(LIMITS.lazyChunk)}`);
+if (total > LIMITS.total) failures.push(`total JS ${kb(total)} gzip exceeds ${kb(LIMITS.total)}`);
+if (failures.length) {
+  for (const f of failures) console.error(`\nFAIL: ${f}`);
   process.exit(1);
 }
 console.log('\nOK: within budget\n');

@@ -37,6 +37,7 @@ function jsonLd(): string {
   const origin = site.origin;
   const personId = `${origin}/#person`;
   const { contact } = site;
+  const atlas = site.projects.find((p) => p.slug === 'prospecting-atlas') ?? site.projects[0]; // the shipped flagship
 
   // Every channel with a real profile URL. Discord has none (profile URLs need numeric IDs), so it is deliberately absent;
   // null channels (TODO(me)) drop out by themselves, which keeps the graph truthful as the owner fills them in.
@@ -78,9 +79,9 @@ function jsonLd(): string {
       // Reuses the sibling site's own @id so the two sites' graphs join up instead of describing the project twice.
       {
         '@type': 'WebSite',
-        '@id': `${site.flagship.url}/#website`,
-        name: site.flagship.title,
-        url: site.flagship.url,
+        '@id': `${site.atlas.url}/#website`,
+        name: atlas.title,
+        url: site.atlas.url,
         creator: { '@id': personId },
       },
     ],

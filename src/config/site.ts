@@ -1,9 +1,23 @@
 // ─────────────────────────────────────────────────────────────────────────────────────────────
-// THE single source of truth for everything personal on mrh.lol.
+// THE single source of truth for everything personal on mrh.lol (v2 schema, docs/V2_DESIGN.md §7).
 // • Components read from here — never hard-code a name, handle, URL or bio anywhere else.
-// • TODO(me)  = the owner hasn't supplied it yet. It stays null; the UI hides whatever is null.
-// • EDITABLE  = copy the owner delegated ("you decide", "along those lines") — change freely.
-// • Keep this file free of runtime imports: scripts/gen-assets.mjs imports it directly with Node.
+// • TODO(me)  = the owner hasn't supplied it yet. It stays null/empty; every such slot has a designed empty state.
+// • EDITABLE  = copy the owner delegated — change freely.
+// • Keep this file free of runtime imports: scripts/gen-assets.mjs and vite.config.ts import it directly with Node.
+//
+// TODO(me) CHECKLIST — fill these in and the matching UI appears; leave them and the empty state shows:
+//   [ ] avatar                      new mascot art (assets-src/avatar-v2.png → `npm run gen:avatar`, then check `alt`)
+//   [ ] pillars.programming.stack   e.g. ['TypeScript', 'React', …]      empty → "This site: Vite · React · TypeScript · raw WebGL"
+//   [ ] pillars.anime.nowWatching   {title, ep?} (AniList fills it at build time when it has one)  empty → "One more episode. Always."
+//   [ ] pillars.anime.favourites    ≤5 titles (AniList favourites are used first)
+//   [ ] pillars.training            {split, lifts[≤4]} — owner wants no stats: leave empty            empty → "Consistency over noise."
+//   [ ] games.cs2                   Premier rating (`rank`), hours, role, map                         empty → "FAVOURITE · #1"
+//   [ ] games.warThunder            nation, topBR, mainVehicle                                        empty → "FAVOURITE"
+//   [ ] squad[].role / .accent      optional tag + accent per friend
+//   [ ] projects['prospecting-bot'].themeConfig   commands[] (11 slash-command names + descriptions), exampleEmbed, inviteUrl
+//   [ ] contact.discord.serverInvite              e.g. 'https://discord.gg/xxxx' → "Join the server" appears
+//   [ ] contact.twitter / youtube / twitch        channels not provided yet
+//   [ ] roblox.headshot             set by the squad asset build (P4): 80px AVIF of the owner's headshot; null → monogram
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 import type { AtlasStatKey, AtlasStats, Project } from '../data/types.ts'; // with extension: vite.config.ts loads this file natively (Node ESM)
 
@@ -21,56 +35,138 @@ export interface AvatarConfig {
   alt: string;
 }
 export interface Channel { label: string; handle: string; href: string }
-/** What the Roblox card says about the owner's live status. 'status' never names the game; 'off' never fetches. */
+/** What the site says about the owner's live Roblox status. 'status' never names the game; 'off' never fetches. */
 export type PresenceMode = 'game' | 'status' | 'off';
+
+export type PillarId = 'programming' | 'games' | 'anime' | 'training';
+export type SectionKey = 'loadout' | 'work' | 'squad' | 'contact';
+export type LiveGameKey = 'cs2' | 'warThunder' | 'roblox' | 'code';
+/** The three game tiles of the Loadout (LiveGameKey minus the editor). */
+export type GameKey = Exclude<LiveGameKey, 'code'>;
+
+export interface PillarMeta {
+  /** Game-UI label (wide 800, uppercase in CSS). */
+  label: string;
+  /** Plain-English name for screen readers and tooltips. */
+  plain: string;
+  /** One line under the label in the Loadout slot. */
+  blurb: string;
+  /** Local accent hex (`--accent` while this pillar is selected). */
+  accent: string;
+}
 export interface RobloxConfig {
   username: string;
   /** Mirrored by hand in nginx.conf (fixed POST body): change both together. vite.config.ts reads this one. */
   userId: number;
   profileUrl: string;
   presence: PresenceMode;
+  /** Same-origin nginx/Vite proxy: the fallback Roblox source when status.mrh.lol is unreachable. */
   presenceEndpoint: string;
   /** Folder with avatar.json, the hashed .bin/textures and fallback/ images. Ends with '/'. */
   assetsBase: string;
-  card: {
-    kicker: string;
-    /** Shown whenever there is no real presence data (loading, error, 'off'). Never a guess. */
-    neutralBadge: string;
-    sayHi: string;
-    viewProfile: string;
-    viewGame: string;
-    posterAlt: string;
-  };
-  copy: { line: string; sub: string; builtFor: string };
+  /** Build-time 40px headshot (80px file) for the hero / system-bar chips. TODO(me) → set by the squad asset build. */
+  headshot: string | null;
+}
+export interface SquadMember {
+  robloxUserId: number;
+  /** Roblox username: also the folder name in assets-src/roblox-friends/<username>/. */
+  username: string;
+  displayName: string;
+  /** Optional mono tag on the plate, e.g. 'DUO'. TODO(me) */
+  role: string | null;
+  /** CSS colour for the floor ring and plate; null → the rotating default (teal, violet, blue, coral). */
+  accent: string | null;
 }
 export interface StatTile {
   key: AtlasStatKey;
   /** Text after the number. `{statKey}` placeholders are replaced with formatted numbers, e.g. '{npcs}'. */
   label: string;
 }
+export interface Cs2Config {
+  /** Queue the owner plays; shown on the scoreboard row. */
+  mode: string | null;
+  /** Premier rating, or a rank name. TODO(me) */
+  rank: string | null;
+  hours: string | null;
+  role: string | null;
+  map: string | null;
+}
+export interface WarThunderConfig { nation: string | null; /** Battle rating, e.g. '11.7'. */ topBR: string | null; mainVehicle: string | null }
+export interface Lift { name: string; value: string; unit: string }
+
 export interface SiteConfig {
   origin: string;
   displayName: string;
   spokenName: string;
+  /** Hero tagline. */
   identity: string;
+  /** Loadout kicker line (alternate tagline). */
+  loadoutLine: string;
   bio: string;
   interests: string[];
-  location: { label: string; flourish: string | null };
+  /** The mascot slot (spec: `portrait`). A square, flat illustration on a dark ground. null → the Roblox render is used. */
   avatar: AvatarConfig | null;
   hero: {
-    primaryCta: { label: string; href: string };
-    secondaryCta: { label: string; href: string };
+    /** Main-menu rows in order; label/href come from `sections`. The first is the primary row. */
+    menu: SectionKey[];
     scrollHint: string;
   };
-  sections: Record<'about' | 'player' | 'work' | 'contact', { id: string; index: string; title: string }>;
-  roblox: RobloxConfig;
-  flagship: {
-    slug: string;
+  sections: Record<SectionKey, {
+    id: string;
+    /** '01'…'04' — the kicker number and the main-menu index of the page order (menu rows use their own order). */
+    index: string;
+    /** Lexicon word: system-bar tick, menu row, h2. */
     title: string;
-    url: string;
+    /** Mono kicker tag after the hairline: `02 ─── ITEM LIST`. */
     kicker: string;
-    summary: string;
-    cta: string;
+    /** sr-only plain-English subtitle after the h2. */
+    subtitle: string;
+  }>;
+  pillars: {
+    programming: { stack: string[] };
+    anime: {
+      /** AniList username used by gen-data at build time (favourites, currently watching, stats). null → no fetch. */
+      anilistUsername: string | null;
+      nowWatching: { title: string; ep?: number } | null;
+      favourites: string[];
+    };
+    training: { split: string | null; lifts: Lift[] };
+  };
+  pillarMeta: Record<PillarId, PillarMeta>;
+  games: {
+    /** Favourite order, first is the big tile. */
+    order: GameKey[];
+    cs2: Cs2Config;
+    warThunder: WarThunderConfig;
+  };
+  roblox: RobloxConfig;
+  squad: {
+    /** ≤4 friends (the owner is the fifth slot). Friends' consent first; avatars + names only, never live status. */
+    members: SquadMember[];
+    copy: { sub: string; openSlot: string; waiting: string; ready: string };
+  };
+  /** Live-status service (src/status/ + services/status/). */
+  status: {
+    /** Production relay. Dev override: `devEndpoint`; build override: VITE_STATUS_URL (resolved in src/status, not here). */
+    endpoint: string;
+    devEndpoint: string;
+    /** Server-side allowlist is authoritative; this mirrors what the UI may render. */
+    show: { discord: boolean; activity: boolean; custom: boolean; spotify: boolean; robloxGame: boolean };
+    /** Activity-name matchers → LiveGameKey (hero pulse tint, Loadout IN MATCH, system-bar live tick). */
+    gameMatchers: Record<LiveGameKey, RegExp>;
+    /**
+     * Steam profiles the relay watches. UI shows only these neutral labels, NEVER persona names. Vanity URLs / steamID64s
+     * live in services/status env (STATUS_STEAM_*), not in this client-bundled file.
+     */
+    steam: { key: 'main' | 'cs'; label: string }[];
+  };
+  /** Atlas build data: live-stat fallbacks, the screenshot set and the readout tiles. */
+  atlas: {
+    url: string;
+    stats: StatTile[];
+    highlights: string[];
+    statsFallback: AtlasStats;
+    syncedOnFallback: string;
     screenshot: {
       widths: number[];
       pattern: string;
@@ -81,13 +177,12 @@ export interface SiteConfig {
       /** Phone-only crop shown below `media`; its own width/height keep the layout stable (CLS 0) while a different aspect loads. */
       mobile: { media: string; widths: number[]; pattern: string; width: number; height: number };
     };
-    stats: StatTile[];
-    highlights: string[];
-    statsFallback: AtlasStats;
-    syncedOnFallback: string;
   };
-  projectsFallback: Project[];
-  forgeCard: { title: string; body: string; linkLabel: string; href: string };
+  /** Builds. Merged with Supabase rows by slug at build time (Supabase wins on any field it sets). */
+  projects: Project[];
+  work: {
+    forgeSlot: { title: string; body: string; linkLabel: string; href: string };
+  };
   contact: {
     primary: 'discord' | 'email';
     intro: string;
@@ -100,6 +195,7 @@ export interface SiteConfig {
     twitch: Channel | null;
     form: { enabled: boolean; title: string; note: string; success: string };
   };
+  footer: { back: string };
   sourceUrl: string | null;
   seo: {
     title: string;
@@ -115,82 +211,112 @@ export const site: SiteConfig = {
   displayName: 'MrHarold',
   // Owner's answer to "real name". Used only as JSON-LD alternateName; no real name is published.
   spokenName: 'Mr Harold',
-  // EDITABLE — owner: "you decide something cool". The "looking up" is the planes nod.
-  // \u00a0 between "a" and "habit": `text-wrap: balance` otherwise leaves the article dangling at the end of line 1.
-  identity: 'Code, games, and a\u00a0habit of looking up.',
-  // EDITABLE — owner: "gamer, programmer, something along those lines". **…** renders as amber emphasis.
-  bio: "I'm MrHarold — a programmer who never really stopped being a gamer. I build the tools I wish existed for the games I play, like **Prospecting Atlas**, and I sweat the details nobody asked for. When I'm not shipping code, I'm probably in a flight sim or watching planes go over.",
-  interests: ['gaming', 'programming', 'aviation'], // owner: gaming, programming, planes/aviation
-  // Owner: "say location Cloud". `flourish` is a designer's joke (flight level 350 ≈ 35,000 ft cruise) — null drops it.
-  location: { label: 'the Cloud', flourish: 'FL350' },
+  // Final copy (V2_DESIGN §8). Owner: no aviation anywhere.
+  identity: 'Programmer by trade. Gamer by default.',
+  loadoutLine: 'Main class: programmer. Side quests: everything else.',
+  // **…** renders as amber emphasis.
+  bio: "I'm MrHarold — a programmer who builds tools for the games I play, like **Prospecting Atlas**. Off the keyboard it's CS2, anime and the gym.",
+  // Owner's four pillars. Used by JSON-LD (knowsAbout) and the OG image.
+  interests: ['programming', 'games', 'anime', 'working out'],
 
-  // Generated from assets-src/avatar.png by scripts/gen-avatar.mjs. EDITABLE: swap the art or the alt text any time.
+  // Mascot slot. Until the new flat mascot lands (assets-src/avatar-v2.png → `npm run gen:avatar`) this points at the current
+  // renditions, which are the retired v1 portrait: replace them, do not ship them. The Loadout falls back to the Roblox render
+  // when this is null.
   avatar: {
     srcSm: { avif: '/avatar/avatar-352.avif', webp: '/avatar/avatar-352.webp', png: '/avatar/avatar-352.png' },
     src: { avif: '/avatar/avatar-512.avif', webp: '/avatar/avatar-512.webp', png: '/avatar/avatar-512.png' },
     src2x: { avif: '/avatar/avatar-1024.avif', webp: '/avatar/avatar-1024.webp', png: '/avatar/avatar-1024.png' },
     width: 512,
     height: 512,
-    alt: 'Illustrated portrait of MrHarold in aviator goggles and a gaming headset, with glowing circuit traces and a plane behind him.',
+    alt: 'MrHarold’s mascot: a chunky amber robot with a CRT-screen face, a controller and a dumbbell',
   },
 
   hero: {
-    primaryCta: { label: "See what I've built", href: '#work' },
-    secondaryCta: { label: 'Get in touch', href: '#contact' },
+    // BUILDS is the primary row (2px amber bar); the rest follow page order.
+    menu: ['work', 'loadout', 'squad', 'contact'],
     scrollHint: 'Scroll',
   },
 
+  // The ids #about / #work / #contact are kept so old links still work; #squad is new.
   sections: {
-    about: { id: 'about', index: '01', title: 'Who I am' },
-    player: { id: 'player', index: '02', title: 'In game' },
-    work: { id: 'work', index: '03', title: "What I've built" },
-    contact: { id: 'contact', index: '04', title: 'Get in touch' },
+    loadout: { id: 'about', index: '01', title: 'Loadout', kicker: 'CHARACTER SHEET', subtitle: 'Who I am' },
+    work: { id: 'work', index: '02', title: 'Builds', kicker: 'ITEM LIST', subtitle: "What I've built" },
+    squad: { id: 'squad', index: '03', title: 'Lobby', kicker: 'PARTY', subtitle: 'Who I play with, and what I’m up to right now' },
+    contact: { id: 'contact', index: '04', title: 'Comms', kicker: 'CHANNELS', subtitle: 'How to reach me' },
   },
 
-  // The live 3D avatar beat (src/roblox/, docs/PLAYER_INTEGRATION.md). Assets are built by `npm run roblox:build`.
+  pillars: {
+    // TODO(me): your stack, e.g. ['TypeScript', 'React', 'Node']. Empty → "This site: Vite · React · TypeScript · raw WebGL".
+    programming: { stack: [] },
+    anime: {
+      anilistUsername: 'makogai', // public profile; gen-data fetches favourites / watching / stats at build time
+      nowWatching: null, // TODO(me): only needed if AniList has nothing "Watching"; {title: '…', ep: 12}
+      favourites: [], // TODO(me): ≤5 titles; AniList favourites win when the build-time fetch works
+    },
+    // Owner: "just mention it" — no stats, PRs or apps. Leave both empty; the panel is theming + one line of copy.
+    training: { split: null, lifts: [] },
+  },
+
+  pillarMeta: {
+    programming: { label: 'Programming', plain: 'Programming', blurb: 'Main class', accent: '#3ee0d0' },
+    games: { label: 'Games', plain: 'Games', blurb: 'CS2 first', accent: '#ffc247' },
+    anime: { label: 'Anime', plain: 'Anime', blurb: 'One more episode', accent: '#a78bfa' },
+    training: { label: 'Training', plain: 'Working out', blurb: 'Consistency', accent: '#60a5fa' },
+  },
+
+  games: {
+    // Owner: CS2 is the favourite; also Roblox and War Thunder. Game names appear as plain text only — no logos or art.
+    order: ['cs2', 'roblox', 'warThunder'],
+    // TODO(me): `rank` = Premier rating (unknown), plus whichever of hours / role / map you want shown.
+    cs2: { mode: 'Premier', rank: null, hours: null, role: null, map: null },
+    // TODO(me): e.g. { nation: 'Germany', topBR: '11.7', mainVehicle: '…' }
+    warThunder: { nation: null, topBR: null, mainVehicle: null },
+  },
+
+  // Owner's own Roblox account (live avatar pipeline: scripts/roblox/, assets under public/roblox/).
   roblox: {
     username: 'MrHarold0011',
     userId: 1113999731,
     profileUrl: 'https://www.roblox.com/users/1113999731/profile',
-    // TODO(me): how much of your Roblox status should the site show?
-    //   'status' = online / in game / offline, never the game name (current default)
-    //   'game'   = also the game name and a "View game" link while you are in a game
-    //   'off'    = no presence at all (the badge stays neutral and nothing is fetched)
-    presence: 'game',
+    presence: 'game', // owner: show the game name while in a game
     presenceEndpoint: '/api/roblox-presence', // proxied same-origin by nginx.conf and vite.config.ts (Roblox sends no CORS)
     assetsBase: '/roblox/',
-    card: {
-      kicker: 'Player 1',
-      neutralBadge: 'Main · Roblox',
-      sayHi: 'Say hi',
-      viewProfile: 'View on Roblox',
-      viewGame: 'View game',
-      posterAlt: "MrHarold's Roblox avatar: curved black horns, messy black hair, a skull-teeth mask, a black skull-print sweater, one white and one black wing with violet lightning.",
-    },
-    // EDITABLE: placeholder copy. `builtFor` is "<game> → <project>"; the project half links to the Work section.
-    copy: { line: 'Same me. More horns.', sub: 'Drag me around — I wave back.', builtFor: 'Prospecting! → Prospecting Atlas' },
+    headshot: '/roblox/squad/me/headshot-80.85e9b06b.avif',
   },
 
-  flagship: {
-    slug: 'prospecting-atlas',
-    title: 'Prospecting Atlas',
-    url: 'https://prospecting.mrh.lol',
-    kicker: 'Flagship',
-    // PROMPT.md §4
-    summary: 'A fan database and toolset for the Roblox game Prospecting! — scraped from the official wiki, rebuilt around the questions players actually ask.',
-    cta: 'Open Prospecting Atlas',
-    screenshot: {
-      // Written by `npm run gen:shots` (scripts/shoot-atlas.mjs) from the live site. Desktop frame is cropped to 1440×744
-      // so its bottom edge ends above the Atlas "Jump straight in" icon cards instead of slicing through them.
-      widths: [720, 1440],
-      pattern: '/projects/prospecting-atlas-{w}.{ext}', // ext ∈ avif | webp
-      fallback: '/projects/prospecting-atlas-1440.jpg',
-      width: 1440,
-      height: 744,
-      // Phone capture: 390×550 CSS at 2x, so the Atlas UI text is legible at ~1:1 instead of ~3 px tall.
-      mobile: { media: '(max-width: 47.99rem)', widths: [780], pattern: '/projects/prospecting-atlas-m-{w}.{ext}', width: 780, height: 1100 },
-      alt: 'The Prospecting Atlas home page: search bar, mineral and dig-site counts, and quick links into each section.',
+  squad: {
+    // Owner supplied both friends. Avatars + names only: no live status for friends (consent not given for that).
+    members: [
+      { robloxUserId: 7862008029, username: 'ChaInFilip', displayName: 'ChaInFilip', role: null, accent: null },
+      { robloxUserId: 1197478178, username: 'fairytail6729', displayName: 'fairytail6729', role: null, accent: null },
+    ],
+    copy: {
+      sub: 'My Roblox party. Tap someone to say hi.',
+      openSlot: 'OPEN SLOT',
+      waiting: 'WAITING FOR SQUAD',
+      ready: 'READY',
     },
+  },
+
+  status: {
+    endpoint: 'https://status.mrh.lol',
+    devEndpoint: 'http://localhost:3000',
+    // Spotify is OFF by default (privacy); everything else the owner has not objected to.
+    show: { discord: true, activity: true, custom: true, spotify: false, robloxGame: true },
+    gameMatchers: {
+      cs2: /counter-strike/i,
+      warThunder: /war thunder/i,
+      roblox: /^roblox$/i,
+      code: /^(visual studio code|cursor|jetbrains.*|neovim|zed)$/i,
+    },
+    steam: [
+      { key: 'main', label: 'Steam · main' },
+      { key: 'cs', label: 'Steam · CS' },
+    ],
+  },
+
+  atlas: {
+    url: 'https://prospecting.mrh.lol',
     stats: [
       { key: 'minerals', label: 'minerals, every drop rate' },
       { key: 'digSites', label: 'dig sites with full loot tables' },
@@ -205,19 +331,75 @@ export const site: SiteConfig = {
     //                 locations (/locations/* = 28), syncedOn (newest <lastmod> = 2026-09-30)
     //   /  meta description → quests (107), craftables (67)
     //   /quests/ <title> → npcs (120)      /museum/ <title> → museumDisplays (18)
-    //   discordCommands (11) is not published on the site — from PROMPT.md §4; update by hand.
+    //   discordCommands (11) is not published on the site — owner-confirmed count; update by hand.
     statsFallback: { minerals: 113, digSites: 33, locations: 28, quests: 107, npcs: 120, craftables: 67, museumDisplays: 18, pages: 194, discordCommands: 11 },
     syncedOnFallback: '2026-09-30',
+    screenshot: {
+      // Written by `npm run gen:shots` (scripts/shoot-atlas.mjs) from the live site. Desktop frame is cropped to 1440×744.
+      widths: [720, 1440],
+      pattern: '/projects/prospecting-atlas-{w}.{ext}', // ext ∈ avif | webp
+      fallback: '/projects/prospecting-atlas-1440.jpg',
+      width: 1440,
+      height: 744,
+      // Phone capture: 390×550 CSS at 2x, so the Atlas UI text is legible at ~1:1.
+      mobile: { media: '(max-width: 47.99rem)', widths: [780], pattern: '/projects/prospecting-atlas-m-{w}.{ext}', width: 780, height: 1100 },
+      alt: 'The Prospecting Atlas home page: search bar, mineral and dig-site counts, and quick links into each section.',
+    },
   },
 
-  // Projects normally come from Supabase at build time (scripts/gen-data.mjs). This is used only when that fetch
-  // is unavailable. Owner: "none for now".
-  projectsFallback: [],
-  forgeCard: {
-    title: 'More in the forge',
-    body: 'New tools land here as they ship.',
-    linkLabel: 'Follow along on GitHub',
-    href: 'https://github.com/Makogai',
+  // Normally merged with Supabase rows by slug (scripts/gen-data.mjs). These two are the shipped builds. `stats: null` →
+  // the theme fills its readouts from live build data (atlas stats).
+  projects: [
+    {
+      slug: 'prospecting-atlas',
+      title: 'Prospecting Atlas',
+      tagline: 'Every mineral, drop rate and dig site in Prospecting!, in one searchable atlas.',
+      description: 'A fan database and toolset for the Roblox game Prospecting! — scraped from the official wiki, rebuilt around the questions players actually ask.',
+      url: 'https://prospecting.mrh.lol',
+      repoUrl: null, // TODO(me): public repo URL, if any
+      status: 'live',
+      platform: ['web', 'roblox'],
+      accent: 'amber',
+      image: null,
+      theme: 'atlas',
+      featured: true,
+      sort: 0,
+      stats: null,
+      themeConfig: null,
+    },
+    {
+      slug: 'prospecting-bot',
+      title: 'Prospecting Atlas bot',
+      tagline: 'Where to find every mineral in Prospecting!, as Discord cards.',
+      // The bot's own description (owner-supplied). The discord-bot theme shows it in the embed until `exampleEmbed` is filled.
+      description:
+        'Where to find every mineral in Prospecting! Ranked drop rates, full dig-site loot tables, a farm planner and gear comparisons — rendered as cards. Unofficial fan project; data from the Official Prospecting! Wiki.',
+      url: 'https://discord.com/oauth2/authorize?client_id=1554465933152755722',
+      repoUrl: null,
+      status: 'live',
+      platform: ['discord'],
+      accent: 'blue',
+      image: null,
+      theme: 'discord-bot',
+      featured: false,
+      sort: 1,
+      stats: null,
+      themeConfig: {
+        // TODO(me): the 11 slash commands — [{ name: 'minerals', description: '…' }, …]. Empty → "/11" skeleton.
+        commands: [],
+        // TODO(me): paste real bot output — { title: '…', fields: [{ name: '…', value: '…' }] }. null → hidden.
+        exampleEmbed: null,
+        inviteUrl: 'https://discord.com/oauth2/authorize?client_id=1554465933152755722',
+      },
+    },
+  ],
+  work: {
+    forgeSlot: {
+      title: 'In the forge',
+      body: 'Next build loading. New tools land here as they ship.',
+      linkLabel: 'Follow along on GitHub',
+      href: 'https://github.com/Makogai',
+    },
   },
 
   contact: {
@@ -244,12 +426,15 @@ export const site: SiteConfig = {
     },
   },
 
+  footer: { back: 'Back to main menu' },
+
   sourceUrl: 'https://github.com/Makogai/mrh.lol',
 
   seo: {
-    title: 'MrHarold — code, games, and a habit of looking up', // EDITABLE
-    description: "I'm MrHarold — a programmer who never really stopped being a gamer. I build tools for the games I play, like Prospecting Atlas.", // EDITABLE
-    ogImage: { src: '/og.png', width: 1200, height: 630, alt: 'MrHarold — the name as a glowing chip on a circuit board whose traces turn into ore veins.' },
+    title: 'MrHarold — programmer by trade, gamer by default',
+    description: 'MrHarold: programmer and gamer. I build tools for the games I play, like Prospecting Atlas and its Discord bot.',
+    // Regenerated by `npm run gen:assets`: the name over the vein field with the four sigils.
+    ogImage: { src: '/og.png', width: 1200, height: 630, alt: 'MrHarold — the name over a field of glowing veins, with four small sigils for programming, games, anime and training.' },
     themeColor: '#06080e',
   },
 };

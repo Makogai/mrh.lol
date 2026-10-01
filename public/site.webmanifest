@@ -1,7 +1,7 @@
 {
   "name": "MrHarold",
   "short_name": "MrHarold",
-  "description": "I'm MrHarold — a programmer who never really stopped being a gamer. I build tools for the games I play, like Prospecting Atlas.",
+  "description": "MrHarold: programmer and gamer. I build tools for the games I play, like Prospecting Atlas and its Discord bot.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

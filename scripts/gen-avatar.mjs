@@ -7,11 +7,11 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
-const src = resolve(fileURLToPath(new URL('../assets-src/avatar.png', import.meta.url)));
+const src = resolve(fileURLToPath(new URL('../assets-src/avatar-v2.png', import.meta.url)));
 const outDir = resolve(fileURLToPath(new URL('../public/avatar/', import.meta.url)));
 
 if (!existsSync(src)) {
-  console.log('gen-avatar: assets-src/avatar.png not found — nothing to do (site.avatar stays null).');
+  console.log('gen-avatar: assets-src/avatar-v2.png not found — nothing to do (site.avatar stays null).');
   process.exit(0);
 }
 await mkdir(outDir, { recursive: true });

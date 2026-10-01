@@ -1,10 +1,15 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, type MutableRefObject, type RefObject } from 'react';
 import type { Engine, Measure } from './veins/engine'; // type-only: the engine itself must stay out of the entry bundle
+import type { RGB } from './veins/palette'; // type-only too
 
 interface HeroCanvasProps {
   /** The <header>: the engine listens for pointer events on it and observes its size/visibility. */
   heroRef: RefObject<HTMLElement | null>;
   measure: () => Measure;
+  /** Filled once the engine has loaded (null before, and after teardown): the menu rows call `pulseAt` through it. */
+  engineRef: MutableRefObject<Engine | null>;
+  /** Ambient-pulse colour while he is in a favourite game; null = default teal. May change after the engine started. */
+  tint: RGB | null;
 }
 
 /**
@@ -12,10 +17,13 @@ interface HeroCanvasProps {
  * Everything else happens after hydration, once the browser is idle: load the engine as its own chunk, hand it the
  * canvases, and tear it down cleanly (StrictMode mounts effects twice in dev).
  */
-export function HeroCanvas({ heroRef, measure }: HeroCanvasProps) {
+export function HeroCanvas({ heroRef, measure, engineRef, tint }: HeroCanvasProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const staticRef = useRef<HTMLCanvasElement>(null);
   const dynamicRef = useRef<HTMLCanvasElement>(null);
+  // Read when the engine finishes loading, which can be after the first live-status update.
+  const tintRef = useRef(tint);
+  tintRef.current = tint;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -46,6 +54,8 @@ export function HeroCanvas({ heroRef, measure }: HeroCanvasProps) {
               onIgnite: () => hero.setAttribute('data-ignite', ''),
               debug: new URLSearchParams(window.location.search).has('fxdebug'),
             });
+            engine.setPulseTint(tintRef.current);
+            engineRef.current = engine;
           } catch {
             off();
           }
@@ -61,8 +71,13 @@ export function HeroCanvas({ heroRef, measure }: HeroCanvasProps) {
       else window.clearTimeout(idle);
       engine?.destroy();
       engine = null;
+      engineRef.current = null;
     };
-  }, [heroRef, measure]);
+  }, [heroRef, measure, engineRef]);
+
+  useEffect(() => {
+    engineRef.current?.setPulseTint(tint);
+  }, [tint, engineRef]);
 
   return (
     <div ref={hostRef} className="hero-fx" aria-hidden="true">

@@ -13,8 +13,6 @@ export const TEAL_500: RGB = [18, 181, 170];
 export const VIOLET_400: RGB = [167, 139, 250];
 export const BLUE_400: RGB = [96, 165, 250];
 export const INK_300: RGB = [170, 179, 199];
-export const CONTRAIL: RGB = [207, 227, 255]; // #cfe3ff
-export const FLIGHT: RGB = [232, 241, 255]; // #e8f1ff
 export const COPPER = AMBER_400;
 export const STEEL: RGB = [150, 162, 188];
 export const WARM_STEEL: RGB = [170, 166, 160];
@@ -25,11 +23,10 @@ export const mix = (a: RGB, b: RGB, t: number): RGB => [a[0] + (b[0] - a[0]) * t
 export interface Sprites {
   amber: HTMLCanvasElement; // 32 px spark, white-hot core
   teal: HTMLCanvasElement; // 24 px
-  blue: HTMLCanvasElement; // 24 px contrail head
   hot: HTMLCanvasElement; // 36 px lantern hot spot
 }
 
-function glow(size: number, dpr: number, stops: Array<[number, string]>): HTMLCanvasElement {
+export function glowSprite(size: number, dpr: number, stops: Array<[number, string]>): HTMLCanvasElement {
   const px = Math.max(2, Math.round(size * Math.min(dpr, 2)));
   const c = document.createElement('canvas');
   c.width = c.height = px;
@@ -45,9 +42,8 @@ function glow(size: number, dpr: number, stops: Array<[number, string]>): HTMLCa
 /** Rendered once per DPR change into small offscreen canvases; per-frame glows are then a single drawImage each. */
 export function makeSprites(dpr: number): Sprites {
   return {
-    amber: glow(32, dpr, [[0, '#fff6e0'], [0.14, rgba(AMBER_200, 0.95)], [0.4, rgba(AMBER_400, 0.4)], [1, rgba(AMBER_400, 0)]]),
-    teal: glow(24, dpr, [[0, rgba(TEAL_300, 1)], [0.2, rgba(TEAL_300, 0.8)], [0.5, rgba(TEAL_400, 0.28)], [1, rgba(TEAL_400, 0)]]),
-    blue: glow(24, dpr, [[0, '#e8f1ff'], [0.16, rgba(FLIGHT, 0.9)], [0.45, rgba(BLUE_400, 0.32)], [1, rgba(BLUE_400, 0)]]),
-    hot: glow(36, dpr, [[0, rgba(AMBER_300, 0.95)], [0.3, rgba(AMBER_400, 0.4)], [1, rgba(AMBER_400, 0)]]),
+    amber: glowSprite(32, dpr, [[0, '#fff6e0'], [0.14, rgba(AMBER_200, 0.95)], [0.4, rgba(AMBER_400, 0.4)], [1, rgba(AMBER_400, 0)]]),
+    teal: glowSprite(24, dpr, [[0, rgba(TEAL_300, 1)], [0.2, rgba(TEAL_300, 0.8)], [0.5, rgba(TEAL_400, 0.28)], [1, rgba(TEAL_400, 0)]]),
+    hot: glowSprite(36, dpr, [[0, rgba(AMBER_300, 0.95)], [0.3, rgba(AMBER_400, 0.4)], [1, rgba(AMBER_400, 0)]]),
   };
 }

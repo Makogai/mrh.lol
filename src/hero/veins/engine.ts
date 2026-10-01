@@ -4,7 +4,7 @@
 import { generateNetwork, VEIN_SEED } from './generate';
 import { Dijkstra, buildGrid, nearestEdge } from './graph';
 import type { EdgeGrid, Hit } from './graph';
-import { AMBER_200, AMBER_300, AMBER_400, AMBER_500, BLUE_400, CONTRAIL, FLIGHT, TEAL_300, TEAL_400, TEAL_500, makeSprites, mix, rgba } from './palette';
+import { AMBER_200, AMBER_300, AMBER_400, AMBER_500, TEAL_300, TEAL_400, TEAL_500, glowSprite, makeSprites, mix, rgba } from './palette';
 import type { RGB, Sprites } from './palette';
 import { Board } from './render';
 import type { Network, Rect } from './types';
@@ -30,6 +30,8 @@ export interface Engine {
   destroy(): void;
   pulseAt(x: number, y: number): void;
   setReducedMotion(v: boolean): void;
+  /** Ambient (non-click) pulses take this colour, e.g. the accent of the game he is in. null restores the default teal. */
+  setPulseTint(rgb: RGB | null): void;
 }
 
 interface Pulse {
@@ -135,14 +137,11 @@ export function createEngine(o: EngineOptions): Engine {
   let lastType = 'mouse';
 
   let nextAmbient = 0;
-  let nextFlight = 0;
 
-  // flight
-  const fl = { on: false, n: 0, pts: new Float32Array(0), cum: new Float32Array(0), len: 0, s: 0, landing: false, pin: -1, landT: 0 };
-  let fdist!: Float32Array;
-  let fpred!: Int32Array;
-  let flightStarts: number[] = [];
-  let flightEnds: number[] = [];
+  // Live-game tint for ambient pulses (setPulseTint). Colours and the head sprite are derived once per change, never per frame.
+  let tintCols: string[] | null = null;
+  let tintRgb: RGB | null = null;
+  let tintSprite: HTMLCanvasElement | null = null;
 
   // watchdog
   let ema = 16.7;
@@ -180,6 +179,7 @@ export function createEngine(o: EngineOptions): Engine {
     sctx.setTransform(sx, 0, 0, sy, 0, 0);
     dctx.setTransform(sx, 0, 0, sy, 0, 0);
     sprites = makeSprites(dpr);
+    if (tintRgb) tintSprite = makeTintSprite(tintRgb); // sprites are DPR-sized: rebuild with them
   }
 
   let resMql: MediaQueryList | null = null;
@@ -302,7 +302,8 @@ export function createEngine(o: EngineOptions): Engine {
       }
     }
     if (!m) return;
-    const cols = p.teal ? COL.teal : COL.amber;
+    const tinted = p.teal && tintCols !== null; // only ambient pulses are `teal`; clicks stay amber
+    const cols = tinted ? tintCols! : p.teal ? COL.teal : COL.amber;
     const bands = [
       [12, 1, 2.6, cols[0]],
       [tail * 0.38, 0.55, 2, cols[1]],
@@ -343,7 +344,7 @@ export function createEngine(o: EngineOptions): Engine {
     }
     if (!useSprites) return;
     // head sprites (capped), white-hot for click waves
-    const spr = p.teal ? sprites.teal : sprites.amber;
+    const spr = tinted && tintSprite ? tintSprite : p.teal ? sprites.teal : sprites.amber;
     const sz = p.teal ? 24 : 32;
     let count = 0;
     dctx.globalAlpha = Math.min(1, I);
@@ -480,125 +481,6 @@ export function createEngine(o: EngineOptions): Engine {
     o.onIgnite?.();
     bootPulse();
     nextAmbient = T + 1.2;
-    nextFlight = T + 16 + Math.random() * 12;
-  }
-
-  // ── flight (the aviation nod) ───────────────────────────────────────────────────────────────────────────────────
-  function launchFlight() {
-    for (let attempt = 0; attempt < 4; attempt++) {
-      if (!flightStarts.length) return;
-      const start = flightStarts[Math.floor(Math.random() * flightStarts.length)];
-      const landing = Math.random() < 1 / 3 && net.pins.length > 0;
-      dij.begin(fdist, fpred);
-      dij.seed(fdist, start, 0);
-      dij.run(fdist, Infinity, fpred, false);
-      const pool = landing ? Array.from(net.pins) : flightEnds;
-      let end = -1;
-      for (let i = 0; i < 10 && end < 0; i++) {
-        const c = pool[Math.floor(Math.random() * pool.length)];
-        if (fdist[c] !== Infinity && fdist[c] >= 0.6 * W) end = c;
-      }
-      if (end < 0) continue;
-      let n = 0;
-      for (let v = end; v >= 0; v = fpred[v]) n++;
-      if (fl.pts.length < n * 2) {
-        fl.pts = new Float32Array(net.nodeCount * 2);
-        fl.cum = new Float32Array(net.nodeCount);
-      }
-      let i = n;
-      for (let v = end; v >= 0; v = fpred[v]) {
-        i--;
-        fl.pts[i * 2] = net.nx[v];
-        fl.pts[i * 2 + 1] = net.ny[v];
-      }
-      fl.cum[0] = 0;
-      for (let k = 1; k < n; k++) fl.cum[k] = fl.cum[k - 1] + Math.hypot(fl.pts[k * 2] - fl.pts[k * 2 - 2], fl.pts[k * 2 + 1] - fl.pts[k * 2 - 1]);
-      fl.n = n;
-      fl.len = fl.cum[n - 1];
-      fl.s = 0;
-      fl.landing = landing && net.nkind[end] === 3;
-      fl.pin = end;
-      fl.landT = 0;
-      fl.on = true;
-      return;
-    }
-  }
-
-  let tx0 = 0;
-  let ty0 = 0;
-  /** Point at arc-length s on segment k of the flight polyline → tx0/ty0 (no per-call allocation). */
-  function flightAt(k: number, s: number) {
-    const f = (s - fl.cum[k]) / Math.max(1e-6, fl.cum[k + 1] - fl.cum[k]);
-    tx0 = fl.pts[k * 2] + (fl.pts[k * 2 + 2] - fl.pts[k * 2]) * f;
-    ty0 = fl.pts[k * 2 + 1] + (fl.pts[k * 2 + 3] - fl.pts[k * 2 + 1]) * f;
-  }
-
-  /** Appends the polyline between arc-lengths s0‥s1 to the current path. */
-  function trail(s0: number, s1: number) {
-    s0 = Math.max(0, s0);
-    s1 = Math.min(fl.len, s1);
-    if (s1 <= s0) return;
-    const { pts, cum, n } = fl;
-    let i = 0;
-    while (i < n - 2 && cum[i + 1] <= s0) i++;
-    flightAt(i, s0);
-    dctx.moveTo(tx0, ty0);
-    let k = i + 1;
-    for (; k < n && cum[k] < s1; k++) dctx.lineTo(pts[k * 2], pts[k * 2 + 1]);
-    flightAt(k - 1, s1);
-    dctx.lineTo(tx0, ty0);
-  }
-
-  const TRAIL_COLS = Array.from({ length: 6 }, (_, k) => css(mix(CONTRAIL, BLUE_400, k / 5)));
-  function drawFlight() {
-    const { s } = fl;
-    dctx.lineCap = 'round';
-    // contrail: 280 px, six bands fading 0.55 → 0
-    for (let k = 0; k < 6; k++) {
-      dctx.beginPath();
-      trail(s - (280 / 6) * (k + 1), s - (280 / 6) * k);
-      dctx.globalAlpha = 0.55 * (1 - (k + 0.5) / 6);
-      dctx.strokeStyle = TRAIL_COLS[k];
-      dctx.lineWidth = 2;
-      dctx.stroke();
-    }
-    // edges the flight passed linger at 0.18 and dissipate over ~2.5 s
-    for (let j = 0; j < 6; j++) {
-      dctx.beginPath();
-      trail(s - 280 - (j + 1) * 150, s - 280 - j * 150);
-      dctx.globalAlpha = 0.18 * (1 - (j + 0.5) / 6);
-      dctx.strokeStyle = css(BLUE_400);
-      dctx.lineWidth = 1.5;
-      dctx.stroke();
-    }
-    if (s <= fl.len) {
-      // locate the head
-      let i = 0;
-      while (i < fl.n - 2 && fl.cum[i + 1] <= s) i++;
-      flightAt(i, s);
-      const x = tx0;
-      const y = ty0;
-      dctx.globalAlpha = 1;
-      if (useSprites) dctx.drawImage(sprites.blue, x - 12, y - 12, 24, 24);
-      dctx.fillStyle = css(FLIGHT);
-      dctx.beginPath();
-      dctx.arc(x, y, 1.6, 0, Math.PI * 2);
-      dctx.fill();
-    } else if (fl.landing && fl.landT < 0.6) {
-      const t = fl.landT / 0.6;
-      const x = fl.pts[(fl.n - 1) * 2];
-      const y = fl.pts[(fl.n - 1) * 2 + 1];
-      dctx.globalAlpha = (1 - t) * 0.9;
-      dctx.strokeStyle = css(AMBER_300);
-      dctx.lineWidth = 1;
-      dctx.beginPath();
-      dctx.arc(x, y, 14 * (1 - (1 - t) * (1 - t)), 0, Math.PI * 2);
-      dctx.stroke();
-      if (useSprites) {
-        dctx.globalAlpha = 1 - t;
-        dctx.drawImage(sprites.amber, x - 16, y - 16, 32, 32);
-      }
-    }
   }
 
   // ── reduced motion: one beautiful frame ─────────────────────────────────────────────────────────────────────────
@@ -608,7 +490,7 @@ export function createEngine(o: EngineOptions): Engine {
     launch(5, net.pins, 700, 150, Infinity, 1, 0, false, false, false);
     const p = pulses[5];
     p.on = false;
-    // frozen boot pulse: the wave caught mid-flight at 0.35 of the growth distance, intensity 0.8
+    // frozen boot pulse: the wave caught mid-travel at 0.35 of the growth distance, intensity 0.8
     drawPulse(p, 0.35 * net.maxBirth, 0.8);
     computeLight(0.78 * W, 0.3 * H, true);
     drawLight(1);
@@ -640,9 +522,6 @@ export function createEngine(o: EngineOptions): Engine {
     ldist = new Float32Array(V);
     lightE = new Uint32Array(E);
     lightLv = new Uint8Array(E);
-    fdist = new Float32Array(V);
-    fpred = new Int32Array(V);
-    fl.on = false;
     lightN = 0;
     lcx = lcy = -1e9;
 
@@ -661,15 +540,11 @@ export function createEngine(o: EngineOptions): Engine {
     eligible = new Uint8Array(V);
     ambientSrc = [];
     flashNodes = [];
-    flightStarts = [];
-    flightEnds = [];
     for (let i = 0; i < V; i++) {
       eligible[i] = size[find(i)] >= V * 0.1 ? 1 : 0;
       const k = net.nkind[i];
       if (k === 1 || k === 2) flashNodes.push(i);
       if (eligible[i] && (k === 1 || k === 3)) ambientSrc.push(i);
-      if (net.nx[i] < 0.15 * W || net.ny[i] < 0.12 * H) flightStarts.push(i);
-      if (net.nx[i] > 0.8 * W) flightEnds.push(i);
     }
     // p88: the growth front stops at the 88th-percentile birth; the last 12 % creeps in over 40 s.
     p88 = E ? net.ebirth[board.order[Math.min(E - 1, Math.floor(E * 0.88))]] : 0;
@@ -696,7 +571,6 @@ export function createEngine(o: EngineOptions): Engine {
       lightFade = 1;
       if (reduced) drawStaticFrame();
       nextAmbient = T + 1;
-      nextFlight = T + 16 + Math.random() * 12;
     }
   }
 
@@ -775,23 +649,11 @@ export function createEngine(o: EngineOptions): Engine {
         ambient();
         nextAmbient = T + 2.6 + Math.random() * 1.6;
       }
-      if (T >= nextFlight) {
-        let clicking = false;
-        for (let i = 0; i < 4; i++) clicking = clicking || pulses[i].on;
-        if (!fl.on && !clicking && level < 3) launchFlight();
-        nextFlight = T + 16 + Math.random() * 12;
-      }
     }
     for (const p of pulses) {
       if (!p.on) continue;
       p.t += dt;
       if (p.speed * p.t >= p.end) p.on = false;
-    }
-    if (fl.on) {
-      fl.s += 360 * dt;
-      if (fl.s > fl.len) fl.landT += dt;
-      // the contrail (280 px) and the lingering edges (~900 px of fade) both drain past the end before we stop
-      if (fl.s > fl.len + 280 + 900) fl.on = false;
     }
     // the lantern: L chases the pointer with ~100 ms of lag, so the light is dragged along the traces
     const [tx, ty] = target();
@@ -817,7 +679,6 @@ export function createEngine(o: EngineOptions): Engine {
       const r = p.speed * p.t;
       drawPulse(p, r, pulseIntensity(p, r));
     }
-    if (fl.on) drawFlight();
     dctx.globalAlpha = 1;
     dctx.globalCompositeOperation = 'source-over';
   }
@@ -856,9 +717,8 @@ export function createEngine(o: EngineOptions): Engine {
       staticMs,
       avgFrameMs,
       reduced,
-      // QA-only handles (this object exists only with ?fxdebug): fire a click pulse / a flight on demand
+      // QA-only handle (this object exists only with ?fxdebug): fire a click pulse on demand
       click: pulseAt,
-      flight: launchFlight,
     };
   }
 
@@ -950,9 +810,8 @@ export function createEngine(o: EngineOptions): Engine {
     guard(() => {
       reduced = v;
       for (const p of pulses) p.on = false;
-      fl.on = false;
       if (v) {
-        // finish whatever growth was in flight, then hold one frame
+        // finish whatever growth is under way, then hold one frame
         phase = 'done';
         board.drawnEdges = net.edgeCount;
         board.drawnNodes = board.norder.length;
@@ -962,7 +821,6 @@ export function createEngine(o: EngineOptions): Engine {
         dctx.clearRect(0, 0, W, H);
         lcx = -1e9;
         nextAmbient = T + 1;
-        nextFlight = T + 16 + Math.random() * 12;
       }
       sync();
     });
@@ -1045,5 +903,16 @@ export function createEngine(o: EngineOptions): Engine {
     }
   })();
 
-  return { destroy, pulseAt, setReducedMotion };
+  /** A 24 px head sprite in the tint colour; same stops as the built-in teal one. */
+  function makeTintSprite(c: RGB): HTMLCanvasElement {
+    const hot = mix(c, [255, 255, 255], 0.55);
+    return glowSprite(24, dpr, [[0, rgba(hot, 1)], [0.2, rgba(hot, 0.8)], [0.5, rgba(c, 0.28)], [1, rgba(c, 0)]]);
+  }
+  function setPulseTint(c: RGB | null) {
+    tintRgb = c;
+    tintCols = c ? [css(mix(c, [255, 255, 255], 0.55)), css(c), css(mix(c, [0, 0, 0], 0.35))] : null;
+    tintSprite = c ? makeTintSprite(c) : null;
+  }
+
+  return { destroy, pulseAt, setReducedMotion, setPulseTint };
 }

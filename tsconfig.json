@@ -18,5 +18,8 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["vite/client"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "src/sections", "src/roblox/PlayerSection.tsx", "src/roblox/PlayerCard.tsx", "src/roblox/PlayerTrace.tsx"
+  ]
 }

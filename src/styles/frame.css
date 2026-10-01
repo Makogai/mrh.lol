@@ -1,0 +1,134 @@
+/* v2 frame primitives (docs/V2_DESIGN.md §1): accent variables, the `.slot` frame and the section header.
+   Imported by global.css. Owned by the shell package; other packages consume the classes and variables, never edit this. */
+
+/* Registered so the accent can transition (240 ms re-skin when a Loadout slot is selected) and so --tk can ease on hover.
+   An unregistered custom property flips instantly. `inherits: true` keeps them cascading like plain variables. */
+@property --accent { syntax: "<color>"; inherits: true; initial-value: #ffc247; }
+@property --accent-ink { syntax: "<color>"; inherits: true; initial-value: #06080e; }
+@property --glow { syntax: "<color>"; inherits: true; initial-value: rgb(255 194 71 / 0.5); }
+@property --tk { syntax: "<length>"; inherits: false; initial-value: 6px; }
+
+/* The five variables every themed surface reads (and nothing else): accent, ink-on-accent, two surfaces, glow.
+   Site default = lantern amber on iron. `--glow` is a ready-made translucent colour for blooms; it must be redeclared
+   next to `--accent` (a registered colour is resolved where it is declared, so it cannot follow a descendant's override). */
+:root {
+  --accent: #ffc247;
+  --accent-ink: #06080e;
+  --surface-0: #0a0d16;
+  --surface-1: #10141f;
+  --glow: rgb(255 194 71 / 0.5);
+}
+
+/* Local accents. `data-pillar` = a Loadout pillar (set on the section; the whole section re-skins). `data-accent` = a game
+   or app that owns a tile. Every `--accent-ink` is iron-950 (>= 7:1 on all of them) except blurple, which takes white
+   (>= 4.5:1) and is never used as small text. Pairs are in scripts/qa/contrast.mjs. */
+[data-pillar],
+[data-accent] {
+  transition: --accent var(--dur-base) var(--ease-out), --glow var(--dur-base) var(--ease-out);
+}
+[data-pillar="programming"] { --accent: #3ee0d0; --accent-ink: #06080e; --glow: rgb(62 224 208 / 0.5); }
+[data-pillar="games"], [data-accent="amber"] { --accent: #ffc247; --accent-ink: #06080e; --glow: rgb(255 194 71 / 0.5); }
+[data-pillar="anime"], [data-accent="violet"] { --accent: #a78bfa; --accent-ink: #06080e; --glow: rgb(167 139 250 / 0.5); }
+[data-pillar="training"], [data-accent="blue"] { --accent: #60a5fa; --accent-ink: #06080e; --glow: rgb(96 165 250 / 0.5); }
+[data-accent="teal"] { --accent: #3ee0d0; --accent-ink: #06080e; --glow: rgb(62 224 208 / 0.5); }
+[data-accent="cs2"] { --accent: #d9b26a; --accent-ink: #06080e; --glow: rgb(217 178 106 / 0.5); }
+[data-accent="warThunder"] { --accent: #b7e07a; --accent-ink: #06080e; --glow: rgb(183 224 122 / 0.45); }
+[data-accent="roblox"] { --accent: #ff8f80; --accent-ink: #06080e; --glow: rgb(255 143 128 / 0.5); }
+[data-accent="blurple"] { --accent: #5865f2; --accent-ink: #ffffff; --glow: rgb(88 101 242 / 0.5); }
+
+@layer components {
+  /* ── .slot: the only framing primitive ──────────────────────────────────────────────────────────────────────────
+     Radius 12 (pad) or 20 (.slot-card; item cards set --slot-r: var(--radius-card)). Iron gradient, inset 1 px hairline at
+     8 % white. Four 8 px L-shaped corner ticks in the accent at 60 %, drawn with background-image only (no extra DOM): every
+     L is an 8x1 and a 1x8 gradient sharing one corner point, `--tk` away from the box edge. Hover / focus-within moves the
+     ticks 3 px outward and fades the glow in over 160 ms. */
+  .slot {
+    --tk: 6px;
+    --slot-r: var(--radius-pad);
+    --tick: color-mix(in srgb, var(--accent) 60%, transparent);
+    position: relative;
+    border-radius: var(--slot-r);
+    background-color: var(--surface-0);
+    background-image:
+      linear-gradient(var(--tick), var(--tick)), linear-gradient(var(--tick), var(--tick)),
+      linear-gradient(var(--tick), var(--tick)), linear-gradient(var(--tick), var(--tick)),
+      linear-gradient(var(--tick), var(--tick)), linear-gradient(var(--tick), var(--tick)),
+      linear-gradient(var(--tick), var(--tick)), linear-gradient(var(--tick), var(--tick)),
+      linear-gradient(180deg, var(--surface-0), var(--surface-1));
+    background-size: 8px 1px, 1px 8px, 8px 1px, 1px 8px, 8px 1px, 1px 8px, 8px 1px, 1px 8px, 100% 100%;
+    background-repeat: no-repeat;
+    background-position:
+      left var(--tk) top var(--tk), left var(--tk) top var(--tk),
+      right var(--tk) top var(--tk), right var(--tk) top var(--tk),
+      left var(--tk) bottom var(--tk), left var(--tk) bottom var(--tk),
+      right var(--tk) bottom var(--tk), right var(--tk) bottom var(--tk),
+      0 0;
+    box-shadow: var(--shadow-hairline);
+    transition: box-shadow var(--dur-fast) var(--ease-out), --tk var(--dur-fast) var(--ease-out);
+  }
+  .slot-card { --slot-r: 20px; }
+  .slot:hover,
+  .slot:focus-within {
+    --tk: 3px;
+    box-shadow:
+      var(--shadow-hairline),
+      0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
+      0 12px 48px -12px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+  /* Non-interactive display slots opt out of the hover glow. */
+  .slot[data-static]:hover { --tk: 6px; box-shadow: var(--shadow-hairline); }
+  @media (prefers-reduced-motion: reduce) { .slot { transition: box-shadow var(--dur-fast) linear; } }
+
+  /* ── SectionHeader ───────────────────────────────────────────────────────────────────────────────────────────────
+     `02 ─── ITEM LIST            2 SHIPPED · 1 IN THE FORGE` then the wide title. The hairline grows 0 → 48 px on reveal
+     (width on a flex child: it cannot overflow its parent, trap #2). With no JS (or no IntersectionObserver) it is just 48. */
+  .sh-kicker {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 20px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-ink-400);
+  }
+  .sh-rule {
+    flex: none;
+    width: 48px;
+    height: 1px;
+    background-color: color-mix(in srgb, var(--color-ink-100) 22%, transparent);
+    transition: width var(--dur-enter) var(--ease-out);
+  }
+  .js [data-reveal]:not([data-revealed]) .sh-rule { width: 0; }
+  .sh-kicker { flex-wrap: wrap; row-gap: 4px; }
+  .sh-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* The readout is real data or absent. Phones: its own line under the kicker (a 26-character readout plus the label does not fit
+     in 358px). From 768 it sits right-aligned on the kicker line. */
+  .sh-readout { flex: 1 0 100%; color: var(--color-ink-300); white-space: nowrap; }
+  @media (width >= 48rem) { .sh-kicker { flex-wrap: nowrap; } .sh-readout { flex: none; margin-inline-start: auto; } }
+  .sh-title {
+    margin: 24px 0 0;
+    font-size: var(--text-title);
+    line-height: var(--text-title--line-height);
+    font-weight: 800;
+    font-stretch: 125%;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+  .sh-intro { max-width: 52ch; margin: 24px 0 0; font-size: var(--text-lg); line-height: var(--text-lg--line-height); color: var(--color-ink-300); }
+  @media (width >= 48rem) { .sh-intro { font-size: var(--text-xl); line-height: var(--text-xl--line-height); } }
+
+  /* ── page grid: 1 column / 8 at 768 / 12 at 1024+, 24 px gaps (8 px rhythm). Children place themselves with col-span. ── */
+  .page-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  @media (width >= 48rem) { .page-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+  @media (width >= 64rem) { .page-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 32px 24px; } }
+
+  /* Game-UI label: wide 800 uppercase (menu rows, slot names, section and app titles). Mono numbers use font-mono. */
+  .ui-label { font-weight: 800; font-stretch: 125%; letter-spacing: -0.02em; text-transform: uppercase; }
+
+  /* Sigils (components/Sigil.tsx): 24-grid stroke icons. */
+  .sigil { flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+}
