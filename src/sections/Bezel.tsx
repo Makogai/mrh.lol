@@ -39,7 +39,8 @@ const SIZES = '(min-width:1920px) 400px, (min-width:1280px) 320px, (min-width:10
 
 function srcSet(a: AvatarConfig, key: keyof ImageSet): string {
   const one = `${a.src[key]} ${a.width}w`;
-  return a.src2x ? `${one}, ${a.src2x[key]} ${a.width * 2}w` : one;
+  const sm = a.srcSm ? [`${a.srcSm[key]} 352w`] : [];
+  return [...sm, one, ...(a.src2x ? [`${a.src2x[key]} ${a.width * 2}w`] : [])].join(', ');
 }
 
 export function Bezel({ avatar, className }: { avatar: AvatarConfig | null; className?: string }) {

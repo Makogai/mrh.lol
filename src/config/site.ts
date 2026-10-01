@@ -9,6 +9,8 @@ import type { AtlasStatKey, AtlasStats, Project } from '../data/types';
 
 export interface ImageSet { avif: string; webp: string; png: string }
 export interface AvatarConfig {
+  /** 352×352 renditions for phones (176 CSS px bezel at 2x); optional. Kept small because the avatar loads at startup there. */
+  srcSm?: ImageSet;
   /** 512×512 renditions — the 1x source on every layout. */
   src: ImageSet;
   /** 1024×1024 renditions for 2x screens; null if not exported. */
@@ -101,6 +103,7 @@ export const site: SiteConfig = {
 
   // Generated from assets-src/avatar.png by scripts/gen-avatar.mjs. EDITABLE: swap the art or the alt text any time.
   avatar: {
+    srcSm: { avif: '/avatar/avatar-352.avif', webp: '/avatar/avatar-352.webp', png: '/avatar/avatar-352.png' },
     src: { avif: '/avatar/avatar-512.avif', webp: '/avatar/avatar-512.webp', png: '/avatar/avatar-512.png' },
     src2x: { avif: '/avatar/avatar-1024.avif', webp: '/avatar/avatar-1024.webp', png: '/avatar/avatar-1024.png' },
     width: 512,
