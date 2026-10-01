@@ -1,4 +1,5 @@
-// Build-time data: live Prospecting Atlas numbers + published projects from Supabase → src/data/generated.json.
+// Build-time data (schema 2): live Prospecting Atlas numbers, projects (Supabase merged over site.projects by slug) and
+// public GitHub readouts → src/data/generated.json. AniList is a separate script (scripts/gen-anime.mjs).
 // Contract (BUILD_PLAN §6.2 / §9.2): ALWAYS writes a valid GeneratedData and ALWAYS exits 0. A failed fetch degrades to
 // the fallbacks in src/config/site.ts — it must never fail a build or a deploy.
 //   node scripts/gen-data.mjs               fetch and overwrite
@@ -8,7 +9,7 @@
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadEnv } from 'vite';
+import { createServer, loadEnv } from 'vite';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(root, 'src/data/generated.json');
@@ -143,14 +144,19 @@ async function fetchAtlas() {
   };
 }
 
-// ── Supabase projects ────────────────────────────────────────────────────────────────────────────────────────
+// ── Projects: site.projects (config) + Supabase rows, merged by slug ─────────────────────────────────────────
 const STATUSES = new Set(['live', 'beta', 'wip', 'archived']);
 const ACCENTS = new Set(['amber', 'teal', 'violet', 'blue']);
+const PLATFORMS = new Set(['roblox', 'discord', 'web', 'cli']);
 const isStr = (v) => typeof v === 'string';
 const httpsOrNull = (v) => (isStr(v) && /^https:\/\/\S+$/.test(v) ? v : null);
 const posInt = (v) => Number.isInteger(v) && v > 0;
+const isObj = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
 
-/** Maps one PostgREST row to a Project, or returns null (with a warning) if it can't be shown safely. */
+/**
+ * Maps one PostgREST row to an OVERLAY: only the fields the row actually sets (nullable v2 columns that are null are "unset"
+ * and leave the config value alone). Returns null, with a warning, if the row can't be shown safely.
+ */
 function mapProject(row) {
   const slug = isStr(row?.slug) ? row.slug : '?';
   if (!isStr(row?.slug) || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(row.slug) || row.slug.length > 64) return (warn(`project "${slug}" dropped: bad slug`), null);
@@ -163,49 +169,112 @@ function mapProject(row) {
   if (row.url != null && !httpsOrNull(row.url)) return (warn(`project "${slug}" dropped: url is not https`), null);
   if (row.repo_url != null && !httpsOrNull(row.repo_url)) return (warn(`project "${slug}" dropped: repo_url is not https`), null);
 
-  // The image is all-or-nothing: a partly-filled one would break the reserved aspect ratio (CLS) or lack alt text.
-  const img = httpsOrNull(row.image_url) && posInt(row.image_width) && posInt(row.image_height) && isStr(row.image_alt) && row.image_alt.trim()
-    ? { src: row.image_url, width: row.image_width, height: row.image_height, alt: row.image_alt.trim() }
-    : null;
-  if (row.image_url && !img) warn(`project "${slug}": image ignored (needs https url, width, height and alt text)`);
+  const o = { slug: row.slug, title: row.title.trim(), tagline: row.tagline.trim(), status: row.status, accent: row.accent };
+  if (isStr(row.description) && row.description.trim()) o.description = row.description.trim();
+  if (row.url) o.url = row.url;
+  if (row.repo_url) o.repoUrl = row.repo_url;
 
-  return {
-    slug: row.slug,
-    title: row.title.trim(),
-    tagline: row.tagline.trim(),
-    description: isStr(row.description) && row.description.trim() ? row.description.trim() : null,
-    url: row.url ?? null,
-    repoUrl: row.repo_url ?? null,
-    status: row.status,
-    tags: Array.isArray(row.tags) ? row.tags.filter((t) => isStr(t) && t.trim()).map((t) => t.trim()).slice(0, 6) : [],
-    accent: row.accent,
-    image: img,
-  };
+  // The image is all-or-nothing: a partly-filled one would break the reserved aspect ratio (CLS) or lack alt text.
+  if (row.image_url) {
+    if (httpsOrNull(row.image_url) && posInt(row.image_width) && posInt(row.image_height) && isStr(row.image_alt) && row.image_alt.trim()) {
+      o.image = { src: row.image_url, width: row.image_width, height: row.image_height, alt: row.image_alt.trim() };
+    } else warn(`project "${slug}": image ignored (needs https url, width, height and alt text)`);
+  }
+
+  // v2 columns (migration 0003) — all nullable, null = unset. An unknown theme is kept: the registry falls back to 'forge'.
+  if (isStr(row.theme) && /^[a-z0-9-]{1,32}$/.test(row.theme)) o.theme = row.theme;
+  if (typeof row.featured === 'boolean') o.featured = row.featured;
+  if (Array.isArray(row.platform)) o.platform = [...new Set(row.platform.filter((p) => PLATFORMS.has(p)))];
+  // sort_order defaults to 100 in 0001, so 100 means "never set": the config order stays.
+  if (Number.isInteger(row.sort_order) && row.sort_order !== 100) o.sort = row.sort_order;
+  if (Array.isArray(row.stats)) {
+    const stats = row.stats
+      .filter((x) => isObj(x) && isStr(x.label) && x.label.trim() && isStr(x.value) && x.value.trim())
+      .slice(0, 3)
+      .map((x) => ({ label: x.label.trim().slice(0, 32), value: x.value.trim().slice(0, 16) }));
+    o.stats = stats.length ? stats : null;
+  }
+  if (isObj(row.theme_config)) o.themeConfig = row.theme_config;
+  return { overlay: o, sortOrder: Number.isInteger(row.sort_order) ? row.sort_order : 100 };
 }
 
-async function fetchProjects(env) {
+const DEFAULTS = { description: null, url: null, repoUrl: null, platform: ['web'], image: null, theme: null, featured: false, stats: null, themeConfig: null };
+
+/** Config projects first, Supabase wins on every field it sets; Supabase-only slugs are appended with defaults. */
+function mergeProjects(configProjects, mapped) {
+  const bySlug = new Map(configProjects.map((p, i) => [p.slug, { ...p, sort: p.sort ?? i }]));
+  for (const { overlay, sortOrder } of mapped) {
+    const prev = bySlug.get(overlay.slug);
+    bySlug.set(overlay.slug, prev ? { ...prev, ...overlay } : { ...DEFAULTS, sort: sortOrder, ...overlay });
+  }
+  // Array.prototype.sort is stable: ties keep insertion order (config first).
+  return [...bySlug.values()].sort((a, b) => a.sort - b.sort).slice(0, 12);
+}
+
+/** Loads src/config/site.ts through Vite (works on any Node; the config is TypeScript). Failure → null → no merge. */
+async function loadSite() {
+  let server;
+  try {
+    server = await createServer({ root, configFile: false, logLevel: 'silent', appType: 'custom', server: { middlewareMode: true, hmr: false, watch: null }, optimizeDeps: { noDiscovery: true, include: [] } });
+    return (await server.ssrLoadModule('/src/config/site.ts')).site ?? null;
+  } catch (err) {
+    warn(`could not load src/config/site.ts (${err?.message ?? err}) — projects are not merged`);
+    return null;
+  } finally {
+    await server?.close();
+  }
+}
+
+const SELECT_V1 = 'slug,title,tagline,description,url,repo_url,status,accent,image_url,image_width,image_height,image_alt,sort_order';
+const SELECT_V2 = `${SELECT_V1},theme,featured,platform,stats,theme_config`;
+
+async function fetchProjectRows(env) {
   const url = (env.VITE_SUPABASE_URL ?? '').trim().replace(/\/+$/, '');
   const key = (env.VITE_SUPABASE_ANON_KEY ?? '').trim();
   console.log(`gen-data: supabase ${url && key ? 'configured' : 'not configured'}`);
   if (OFFLINE || !url || !key) return null;
 
-  const select = 'slug,title,tagline,description,url,repo_url,status,tags,accent,image_url,image_width,image_height,image_alt';
-  const endpoint = `${url}/rest/v1/projects?select=${select}&published=eq.true&order=sort_order.asc,created_at.asc`;
   // Same rule as src/lib/env.ts: new sb_publishable_ keys go on `apikey` only; legacy JWT anon keys also want Bearer.
   const headers = { apikey: key, Accept: 'application/json' };
   if (key.startsWith('eyJ')) headers.Authorization = `Bearer ${key}`;
+  const get = (select) => fetchText(`${url}/rest/v1/projects?select=${select}&published=eq.true&order=sort_order.asc,created_at.asc`, { headers }, 8000);
 
   try {
-    const body = await fetchText(endpoint, { headers }, 8000);
+    let body;
+    try {
+      body = await get(SELECT_V2);
+    } catch (err) {
+      // 400 = migration 0003 not applied yet (unknown columns). Degrade to the v1 columns instead of losing every project.
+      if (!String(err?.message).includes('400')) throw err;
+      warn('projects: v2 columns missing (run supabase/migrations/0003_projects_v2.sql) — using v1 columns');
+      body = await get(SELECT_V1);
+    }
     const rows = JSON.parse(body);
     if (!Array.isArray(rows)) throw new Error('response is not an array');
-    const projects = rows.map(mapProject).filter(Boolean).slice(0, 12);
-    if (rows.length > 12) warn(`${rows.length} published projects — only the first 12 are used`);
-    return projects;
+    return rows.map(mapProject).filter(Boolean);
   } catch (err) {
-    // Loud on purpose: a silent fallback here would ship a site that quietly lost its projects.
-    console.warn('gen-data: WARNING — could not fetch projects from Supabase; the build will use the config fallback.');
+    // Loud on purpose: a silent fallback here would ship a site that quietly lost its Supabase edits.
+    console.warn('gen-data: WARNING — could not fetch projects from Supabase; the build will use the config projects only.');
     warn(`supabase projects failed (${err?.name === 'TimeoutError' ? 'timeout' : (err?.message ?? err)})`);
+    return null;
+  }
+}
+
+// ── GitHub (public API, no token needed; GITHUB_TOKEN raises the rate limit if set, never logged) ───────────
+async function fetchGithub(user) {
+  if (OFFLINE || !user) return null;
+  const headers = { Accept: 'application/vnd.github+json' };
+  if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  try {
+    const [profile, repos] = await Promise.all([
+      fetchText(`https://api.github.com/users/${user}`, { headers }).then(JSON.parse),
+      fetchText(`https://api.github.com/users/${user}/repos?sort=pushed&per_page=1&type=owner`, { headers }).then(JSON.parse),
+    ]);
+    if (!Number.isInteger(profile.public_repos) || profile.public_repos < 0) throw new Error('no public_repos');
+    const pushed = repos?.[0]?.pushed_at;
+    return { publicRepos: profile.public_repos, lastPushAt: isStr(pushed) && !Number.isNaN(Date.parse(pushed)) ? new Date(pushed).toISOString() : null };
+  } catch (err) {
+    warn(`github failed (${err?.name === 'TimeoutError' ? 'timeout' : (err?.message ?? err)}) — the PUBLIC REPOS readout stays hidden`);
     return null;
   }
 }
@@ -226,19 +295,26 @@ function write(data) {
 
 async function main() {
   const data = {
-    schema: 1,
+    schema: 2,
     builtAt: new Date().toISOString(),
     atlas: { fetchedAt: null, stats: {}, syncedOn: null },
     projects: null,
+    github: null,
   };
   let summary = '';
   try {
     // loadEnv gives real env vars precedence over .env files, exactly as Vite does at build time. Values are never logged.
     const env = loadEnv('production', process.cwd(), 'VITE_');
-    const [atlasResult, projects] = await Promise.all([
+    const siteConfig = await loadSite();
+    const ghUser = /github\.com\/([^/?#]+)/.exec(siteConfig?.contact?.github?.href ?? '')?.[1] ?? null;
+    const [atlasResult, rows, github] = await Promise.all([
       fetchAtlas().catch((err) => { warn(`atlas step crashed: ${err?.message ?? err}`); return null; }),
-      fetchProjects(env).catch((err) => { warn(`projects step crashed: ${err?.message ?? err}`); return null; }),
+      fetchProjectRows(env).catch((err) => { warn(`projects step crashed: ${err?.message ?? err}`); return null; }),
+      fetchGithub(ghUser).catch(() => null),
     ]);
+    data.github = github;
+    // No config (load failed) → null: src/data/index.ts then falls back to site.projects as is.
+    const projects = siteConfig ? mergeProjects(siteConfig.projects ?? [], rows ?? []) : null;
     if (atlasResult) {
       data.atlas = atlasResult.atlas;
       const total = Object.keys(RANGES).length;
@@ -249,7 +325,7 @@ async function main() {
       summary = 'atlas 0/8 live';
     }
     data.projects = projects;
-    summary += ` · projects: ${projects ? `${projects.length} from Supabase` : 'fallback'}`;
+    summary += ` · projects: ${projects ? `${projects.length} (${rows ? `${rows.length} Supabase rows merged` : 'config only'})` : 'not merged'} · github: ${github ? 'ok' : 'none'}`;
   } catch (err) {
     warn(`unexpected error, writing fallbacks: ${err?.message ?? err}`);
     summary = 'degraded to fallbacks';

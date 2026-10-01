@@ -1,0 +1,133 @@
+/* 02 BUILDS: bento grid + item card (docs/V2_DESIGN.md §2). Theme-specific art lives in themes/themes.css.
+   Unlayered on purpose: it must win over Tailwind's layered utilities that Button/TextLink carry. */
+
+/* ── bento: 1 column (390) → 2 (768) → 12 (1024+). Cell spans/heights come from layout.ts as --span / --h / --rows. ── */
+.bento { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+/* The cell is a one-track grid so the card stretches to the cell natively (height:100% on a row-spanning cell resolved late and let content overflow). */
+.bento-cell { min-width: 0; display: grid; }
+.bento-cell > .item { min-height: 0; }
+@media (width >= 48rem) {
+  .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bento-cell[data-wide] { grid-column: 1 / -1; }
+}
+@media (width >= 64rem) {
+  .bento { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .bento-cell, .bento-cell[data-wide] { grid-column: span var(--span); grid-row: span var(--rows); height: var(--h, auto); }
+}
+
+/* ── item card ── */
+.item {
+  --slot-r: var(--radius-card);
+  container: item / inline-size; /* titles and readouts size from the card, not the viewport (a 4-column card is ~380px at 1440) */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 440px;
+  padding: 20px;
+  overflow: clip;
+  transition: transform var(--dur-spring) var(--ease-spring), box-shadow var(--dur-fast) var(--ease-out), --tk var(--dur-fast) var(--ease-out);
+}
+.item[data-featured] { min-height: 520px; }
+@media (width >= 48rem) { .item { padding: 24px; } }
+@media (width >= 64rem) { .item, .item[data-featured] { min-height: 0; } }
+/* Short cells at 1440 (layout.ts): "row" = 312px beside a stack, "dense" = 380px 4-column. Content is trimmed so nothing overflows. */
+@media (width >= 64rem) {
+  .item[data-density] .item-tag { display: none; }
+  .item[data-density] .item-art { min-height: 64px; }
+  .item[data-density="row"] { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr); grid-template-rows: auto 1fr auto auto; column-gap: 20px; row-gap: 8px; }
+  .item[data-density="row"] .item-art { grid-column: 1; grid-row: 1 / -1; }
+  .item[data-density="row"] .item-title { font-size: 1.25rem; }
+  .item[data-density="row"] .item-stats dd { font-size: 1.75rem; }
+  .item[data-density="row"] > :not(.item-art) { grid-column: 2; }
+}
+/* Hover/focus lift: fine pointers only (touch :hover sticks), never under reduced motion. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .item:not([data-static]):hover, .item:not([data-static]):focus-within { transform: translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce) { .item { transition: box-shadow var(--dur-fast) linear; } }
+
+.item-hud { display: flex; align-items: center; gap: 12px; min-height: 20px; font: 500 11px/16px var(--font-mono); letter-spacing: 0.12em; color: var(--color-ink-400); }
+.item-plat { margin-inline-start: auto; display: flex; gap: 8px; color: var(--color-ink-300); }
+.item-pill {
+  --pc: var(--color-teal-400);
+  padding: 1px 8px;
+  border-radius: 999px;
+  color: var(--pc);
+  background: color-mix(in srgb, var(--pc) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pc) 35%, transparent);
+}
+.item-pill[data-status='beta'] { --pc: var(--color-amber-400); }
+.item-pill[data-status='wip'] { --pc: var(--color-violet-400); }
+.item-pill[data-status='archived'] { --pc: var(--color-ink-300); }
+
+/* The art box is reserved by aspect-ratio (phones/tablets) or by flex (1440, where the card has a fixed height): no CLS. */
+.item-art {
+  position: relative;
+  flex: 1 0 auto;
+  aspect-ratio: 16 / 9;
+  min-height: var(--art-min, 0px);
+  overflow: hidden;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-0) 82%, #000);
+  box-shadow: inset 0 0 0 1px rgb(238 242 251 / 0.06);
+  contain: paint;
+}
+@media (width >= 64rem) { .item-art { flex: 1 1 0; aspect-ratio: auto; min-height: 96px; } }
+.art { position: absolute; inset: 0; }
+
+.item-title { margin: 0; font-size: 1.75rem; line-height: 1.05; overflow-wrap: break-word; }
+@media (width >= 64rem) {
+  .item-title { font-size: clamp(1.5rem, 7.5cqi, 2.5rem); }
+  .item[data-featured] .item-title { font-size: clamp(1.75rem, 7cqi, 3rem); }
+}
+.item-tag { margin: 0; color: var(--color-ink-300); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Readouts: real data only, 28-40px mono numerals, label under. */
+.item-stats { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0; }
+.item-stats > div { display: flex; flex-direction: column-reverse; min-width: 0; }
+.item-stats dt { font: 500 10px/14px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ink-400); }
+.item-stats dd { margin: 0; font: 600 clamp(1.75rem, 9cqi, 2.5rem) / 1.1 var(--font-mono); color: var(--color-ink-100); }
+
+.item-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: auto; }
+.item .item-open { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.item .item-open:hover, .item .item-open:focus-visible { background: color-mix(in srgb, var(--accent) 86%, #fff); box-shadow: 0 8px 32px -8px var(--glow); }
+
+/* ── 390px inventory row (n >= 5, non-featured): 96px, art strip + title + Open ── */
+@media (width < 48rem) {
+  .item[data-compact] {
+    min-height: 96px;
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-areas: "art title" "art cta";
+    align-items: center;
+    gap: 0 16px;
+    padding: 12px;
+  }
+  .item[data-compact] .item-art { grid-area: art; }
+  .item[data-compact] .item-title { grid-area: title; align-self: end; }
+  .item[data-compact] .item-cta { grid-area: cta; align-self: start; }
+  .item[data-compact] .item-hud, .item[data-compact] .item-tag, .item[data-compact] .item-stats, .item[data-compact] .item-src { display: none; }
+  .item[data-compact] .item-art { width: 72px; height: 72px; aspect-ratio: 1; min-height: 0; flex: none; }
+  .item[data-compact] .item-title { font-size: 0.9375rem; line-height: 1.15; }
+  .item[data-compact] .item-cta { margin: 0; }
+  .item[data-compact] .item-open { height: 44px; padding-inline: 0; background: none; color: var(--accent); font-size: 0.875rem; text-decoration: underline; text-underline-offset: 4px; }
+  .item[data-compact] .item-open:hover { background: none; box-shadow: none; }
+}
+
+/* ── IN THE FORGE ── */
+.item.forge-slot {
+  min-height: 200px;
+  justify-content: center;
+  gap: 16px;
+  outline: 1px dashed color-mix(in srgb, var(--color-ink-100) 24%, transparent);
+  outline-offset: -1px;
+  --tick: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.forge-slot-sigil { color: var(--color-ink-400); }
+.forge-slot-copy { display: grid; gap: 8px; }
+.forge-slot-link { width: fit-content; }
+@media (width >= 64rem) {
+  .item.forge-slot { min-height: 0; }
+  .item.forge-slot.is-slim { flex-direction: row; align-items: center; padding-inline: 32px; }
+  .forge-slot.is-slim .forge-slot-copy { flex: 1; }
+}

@@ -1,0 +1,109 @@
+/* App themes (docs/V2_DESIGN.md §3). Each block is scoped by .theme-{id} and stays <= 150 lines. The five variables are set
+   inline by ItemCard from ThemeDef.vars. Art animates only while the card has [data-active] (hover/focus on pointer devices,
+   >= 60% in view on touch, never on a hidden tab) and never under reduced motion. Animations: transform/opacity only, plus
+   mask-position/--lx inside the pinned art box. */
+
+/* Parallax on the art layer: fine pointers only (--px/--py are written by ItemCard, -1..1). */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .item .art-atlas, .item .art-forge { inset: -10px; transform: translate3d(calc(var(--px, 0) * 8px), calc(var(--py, 0) * 8px), 0); transition: transform var(--dur-base) var(--ease-out); }
+}
+
+/* ══ forge: iron + the project's own accent ══ */
+.theme-forge .forge-ember {
+  position: absolute; inset: 0; opacity: 0.55;
+  background: radial-gradient(120% 90% at 100% 100%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 62%);
+  transition: opacity var(--dur-enter) var(--ease-out);
+}
+.theme-forge[data-active] .forge-ember { opacity: 1; }
+.theme-forge .forge-trace { position: absolute; inset: 0; width: 100%; height: 100%; }
+.theme-forge .forge-trace path { fill: none; stroke: color-mix(in srgb, var(--color-teal-400) 42%, transparent); stroke-width: 1.5; stroke-linejoin: round; }
+.theme-forge .forge-trace circle { fill: var(--color-teal-400); opacity: 0.7; }
+.theme-forge[data-active] .forge-trace { animation: forge-pulse 1.8s var(--ease-out) infinite alternate; }
+@keyframes forge-pulse { from { opacity: 0.55; } to { opacity: 1; } }
+.theme-forge .forge-bezel {
+  position: absolute; right: 16px; bottom: 16px; width: 46%; margin: 0; padding: 4px;
+  border-radius: 8px; background: var(--color-iron-900);
+  box-shadow: 0 0 0 1px rgb(238 242 251 / 0.14), 0 10px 30px -10px #000;
+}
+.theme-forge .forge-bezel img { display: block; width: 100%; height: auto; border-radius: 5px; }
+
+/* ══ atlas: lantern cavern ══ */
+@property --lx { syntax: '<length>'; inherits: true; initial-value: 220px; }
+@property --ly { syntax: '<length>'; inherits: true; initial-value: 96px; }
+.theme-atlas { --r: 110px; }
+.theme-atlas .atlas-strata, .theme-atlas .atlas-ores { position: absolute; inset: 0; width: 100%; height: 100%; }
+.theme-atlas .atlas-ores { opacity: 0.4; filter: saturate(0.45) brightness(0.72); }
+/* The lit layer: full-saturation ores + an amber glow, both visible only inside a 220px soft mask centred on --lx/--ly. */
+.theme-atlas .atlas-lit {
+  position: absolute; inset: 0;
+  -webkit-mask-image: radial-gradient(circle closest-side, #000 0, #000 30%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side, #000 0, #000 30%, transparent 100%);
+  -webkit-mask-size: 220px 220px; mask-size: 220px 220px;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: calc(var(--lx) - var(--r)) calc(var(--ly) - var(--r));
+  mask-position: calc(var(--lx) - var(--r)) calc(var(--ly) - var(--r));
+}
+.theme-atlas .atlas-ores-lit { opacity: 1; filter: saturate(1.15) brightness(1.1); }
+.theme-atlas .atlas-glow { position: absolute; inset: 0; background: radial-gradient(circle at var(--lx) var(--ly), rgb(255 194 71 / 0.22), transparent 150px); }
+.theme-atlas .item-stats dd { color: var(--accent); }
+/* Touch: no pointer to follow, so the lantern drifts on a slow Lissajous-ish loop while the card is active. */
+@media (hover: none) and (prefers-reduced-motion: no-preference) {
+  .theme-atlas[data-active] { animation: atlas-drift 18s ease-in-out infinite; }
+}
+@keyframes atlas-drift {
+  0%, 100% { --lx: 90px; --ly: 70px; } 18% { --lx: 250px; --ly: 140px; } 38% { --lx: 170px; --ly: 50px; }
+  58% { --lx: 290px; --ly: 110px; } 78% { --lx: 120px; --ly: 150px; }
+}
+/* Field-journal inset: the existing desktop screenshot, tilted, only on the featured card at 1440-class widths. */
+.theme-atlas .atlas-shot { display: none; }
+@media (width >= 64rem) {
+  .theme-atlas[data-featured] .atlas-shot {
+    display: block; position: absolute; right: 3%; top: 12%; width: 45%; margin: 0;
+    transform: rotate(-2deg); border-radius: 6px; overflow: hidden;
+    box-shadow: 0 0 0 1px rgb(255 194 71 / 0.28), 0 18px 40px -12px #000;
+  }
+  .theme-atlas .atlas-shot img { display: block; width: 100%; height: auto; }
+}
+
+/* ══ discord-bot: slash palette ══ */
+.theme-discord-bot { --art-min: 360px; }
+@media (width >= 64rem) { .theme-discord-bot { --art-min: 0px; } .theme-discord-bot[data-density] .bot-embed { display: none; } }
+.theme-discord-bot .art-bot { display: flex; flex-direction: column; gap: 10px; padding: 14px; background: #1e1f22; }
+.theme-discord-bot .bot-stage { flex: 1; min-height: 0; display: grid; gap: 10px; align-content: start; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+@container item (min-width: 520px) { .theme-discord-bot .bot-stage { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
+@container item (max-width: 519px) { .theme-discord-bot .bot-palette li:nth-child(n + 5) { display: none; } }
+.theme-discord-bot .bot-palette { position: relative; align-self: start; padding: 6px; border-radius: 8px; background: #111214; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06); overflow: hidden; }
+.theme-discord-bot .bot-palette ul { margin: 0; padding: 0; list-style: none; }
+.theme-discord-bot .bot-palette li { position: relative; display: flex; align-items: baseline; gap: 10px; height: 26px; padding: 0 8px; white-space: nowrap; overflow: hidden; line-height: 26px; }
+.theme-discord-bot .bot-palette b { font: 600 12px/26px var(--font-mono); color: var(--color-ink-100); flex: none; }
+.theme-discord-bot .bot-palette li span { font-size: 12px; color: var(--color-ink-300); overflow: hidden; text-overflow: ellipsis; }
+.theme-discord-bot .bot-hl { position: absolute; left: 6px; right: 6px; top: 6px; height: 26px; border-radius: 5px; background: rgb(88 101 242 / 0.28); transform: translateY(52px); }
+/* Empty state: the real command count over skeleton bars (clearly not text). */
+.theme-discord-bot .bot-empty { display: grid; gap: 8px; padding: 10px; }
+.theme-discord-bot .bot-empty b { font: 800 34px/1 var(--font-mono); color: var(--color-ink-100); }
+.theme-discord-bot .bot-empty span { font: 500 11px/14px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ink-400); }
+.theme-discord-bot .bot-empty i { display: block; height: 8px; width: 100%; border-radius: 4px; background: rgb(255 255 255 / 0.07); }
+.theme-discord-bot .bot-empty i:nth-of-type(2) { width: 72%; }
+.theme-discord-bot .bot-empty i:nth-of-type(3) { width: 46%; }
+.theme-discord-bot .bot-embed { min-width: 0; }
+.theme-discord-bot .bot-embed-cap { display: block; margin-bottom: 6px; font: 500 10px/14px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ink-400); }
+.theme-discord-bot .bot-embed-card { padding: 10px 12px; border-radius: 4px; border-left: 4px solid var(--color-amber-400); background: #2b2d31; }
+.theme-discord-bot .bot-embed-card strong { display: block; font-size: 14px; line-height: 20px; color: var(--color-ink-100); }
+.theme-discord-bot .bot-embed-card p { margin: 4px 0 0; font-size: 12.5px; line-height: 18px; color: var(--color-ink-300); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.theme-discord-bot .bot-embed-card dl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin: 8px 0 0; }
+.theme-discord-bot .bot-embed-card dt { font-size: 11px; font-weight: 700; color: var(--color-ink-100); }
+.theme-discord-bot .bot-embed-card dd { margin: 0; font-size: 12px; color: var(--color-ink-300); }
+.theme-discord-bot .bot-composer { display: flex; align-items: center; height: 36px; padding: 0 12px; border-radius: 8px; background: #383a40; font: 500 14px var(--font-mono); color: var(--color-ink-100); flex: none; }
+.theme-discord-bot .bot-caret { width: 2px; height: 16px; margin-left: 2px; background: var(--color-ink-100); }
+/* The sequence (1.8s, once per activation): "/" types, the palette opens, the highlight steps down two rows. The resting
+   state (inactive, reduced motion) is the finished frame. Afterwards only the caret loops. */
+@media (prefers-reduced-motion: no-preference) {
+  .theme-discord-bot[data-active] .bot-slash { animation: bot-type 1.8s step-end both; }
+  .theme-discord-bot[data-active] .bot-palette { animation: bot-open 1.8s var(--ease-out) both; }
+  .theme-discord-bot[data-active] .bot-hl { animation: bot-step 1.8s var(--ease-out) both; }
+  .theme-discord-bot[data-active] .bot-caret { animation: bot-blink 1s step-end infinite; }
+}
+@keyframes bot-type { 0% { opacity: 0; } 12%, 100% { opacity: 1; } }
+@keyframes bot-open { 0%, 18% { opacity: 0; transform: translateY(8px); } 34%, 100% { opacity: 1; transform: none; } }
+@keyframes bot-step { 0%, 52% { transform: translateY(0); } 53%, 76% { transform: translateY(26px); } 77%, 100% { transform: translateY(52px); } }
+@keyframes bot-blink { 50% { opacity: 0; } }
