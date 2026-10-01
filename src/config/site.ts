@@ -85,11 +85,17 @@ export interface StatTile {
 export interface Cs2Config {
   /** Queue the owner plays; shown on the scoreboard row. */
   mode: string | null;
-  /** Premier rating, or a rank name. TODO(me) */
+  /** Premier rating, or a rank name. */
   rank: string | null;
+  /** Season peak Premier rating. */
+  peak: string | null;
+  /** FACEIT Elo. */
+  faceit: string | null;
   hours: string | null;
   role: string | null;
   map: string | null;
+  /** Where rank/peak/faceit came from. Plain text, no link: the source page shows the CS account's persona name. */
+  source: { label: string; asOf: string } | null;
 }
 export interface WarThunderConfig { nation: string | null; /** Battle rating, e.g. '11.7'. */ topBR: string | null; mainVehicle: string | null }
 export interface Lift { name: string; value: string; unit: string }
@@ -123,7 +129,7 @@ export interface SiteConfig {
     subtitle: string;
   }>;
   pillars: {
-    programming: { stack: string[] };
+    programming: { stack: string[]; motto: string | null };
     anime: {
       /** AniList username used by gen-data at build time (favourites, currently watching, stats). null → no fetch. */
       anilistUsername: string | null;
@@ -246,8 +252,11 @@ export const site: SiteConfig = {
   },
 
   pillars: {
-    // TODO(me): your stack, e.g. ['TypeScript', 'React', 'Node']. Empty → "This site: Vite · React · TypeScript · raw WebGL".
-    programming: { stack: [] },
+    // From the owner's ChatGPT memory (2026-10-01), ordered by use. `motto` renders as a code comment in the editor panel.
+    programming: {
+      stack: ['TypeScript', 'Angular', 'Laravel · PHP', 'Node.js', 'Python · FastAPI', 'Vue', 'Flutter', 'Java · Spring'],
+      motto: "I'll spend 30 minutes automating something that takes five — and call it a win.",
+    },
     anime: {
       anilistUsername: 'makogai', // public profile; gen-data fetches favourites / watching / stats at build time
       nowWatching: null, // TODO(me): only needed if AniList has nothing "Watching"; {title: '…', ep: 12}
@@ -267,9 +276,12 @@ export const site: SiteConfig = {
   games: {
     // Owner: CS2 is the favourite; also Roblox and War Thunder. Game names appear as plain text only — no logos or art.
     order: ['cs2', 'roblox', 'warThunder'],
-    // TODO(me): `rank` = Premier rating (unknown), plus whichever of hours / role / map you want shown.
-    cs2: { mode: 'Premier', rank: null, hours: '540', role: null, map: 'de_mirage' },
-    // TODO(me): e.g. { nation: 'Germany', topBR: '11.7', mainVehicle: '…' }
+    // Premier / peak / FACEIT: snapshot of csrep.gg for the CS account, 1 Oct 2026. csrep's API is request-only, so this is
+    // refreshed by hand; `source` keeps the date visible so it never reads as live.
+    cs2: {
+      mode: 'Premier', rank: '3,297', peak: '3,306', faceit: '721', hours: '540', role: null, map: 'de_mirage',
+      source: { label: 'csrep.gg', asOf: '1 Oct 2026' },
+    },
     warThunder: { nation: 'USA', topBR: '12.0', mainVehicle: 'M1A1 HC' },
   },
 

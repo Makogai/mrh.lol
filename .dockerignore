@@ -10,3 +10,6 @@ src/data/generated.json
 docs
 assets-src
 *.log
+**/.env
+**/.env.*
+!**/.env.example

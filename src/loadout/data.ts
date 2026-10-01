@@ -2,10 +2,14 @@ import { site, type Cs2Config, type GameKey, type Lift, type WarThunderConfig } 
 import { buildData } from '../data';
 import type { AnimeData, AnimeEntry, GithubStats } from '../data/types';
 import snapshot from './anime.snapshot.json';
+import socials from '../data/socials.snapshot.json';
 
 /** Everything the Loadout renders, resolved once so fixtures (src/loadout/__fixtures__) can swap any slot. */
 export interface LoadoutData {
   stack: string[];
+  motto: string | null;
+  /** Main Steam profile, public counters only (scripts/gen-socials.mjs). null hides the link. */
+  steam: { url: string; level: number; badges: number | null } | null;
   /** Newest build, for "Currently building →". null hides the line. */
   building: { title: string; status: string } | null;
   github: GithubStats | null;
@@ -29,6 +33,8 @@ export function resolveLoadoutData(): LoadoutData {
   const forge = buildData.projects.find((p) => p.status === 'wip') ?? buildData.projects.find((p) => p.featured) ?? buildData.projects[0];
   return {
     stack: site.pillars.programming.stack,
+    motto: site.pillars.programming.motto,
+    steam: socials.steam ? { url: socials.steam.url, level: socials.steam.level, badges: socials.steam.badges } : null,
     building: forge ? { title: forge.title, status: forge.status } : null,
     github: buildData.github,
     anime: {

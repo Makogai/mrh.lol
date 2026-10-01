@@ -1,0 +1,35 @@
+{
+  "steam": {
+    "url": "https://steamcommunity.com/id/mrharold0011/",
+    "level": 70,
+    "badges": 104,
+    "friends": 185,
+    "awards": 24,
+    "avatar": {
+      "src": "/socials/steam-main.b2d0c97c.webp",
+      "width": 64,
+      "height": 64
+    }
+  },
+  "discord": [
+    {
+      "username": "makogai",
+      "displayName": "Harold",
+      "avatar": {
+        "src": "/socials/discord-makogai.c1e37319.webp",
+        "width": 64,
+        "height": 64
+      }
+    },
+    {
+      "username": "mrharold01",
+      "displayName": "MrHarold",
+      "avatar": {
+        "src": "/socials/discord-mrharold01.d490db4a.webp",
+        "width": 64,
+        "height": 64
+      }
+    }
+  ],
+  "fetchedAt": "2026-10-01"
+}

@@ -93,6 +93,9 @@
   .lo-code li::before { content: counter(line); position: absolute; left: 0; width: 36px; text-align: right; color: var(--color-ink-500); }
   .lo-code-now { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
   .lo-code-arrow { color: var(--accent); }
+  /* The motto reads as a code comment: dimmer, italic, wraps under its own line number. */
+  .lo-code-comment { margin-top: 4px; font-style: italic; color: var(--color-ink-300); line-height: 22px; padding-top: 3px; padding-bottom: 3px; }
+  .lo-source { margin-top: 8px; color: var(--color-ink-400); }
 
   /* Games. */
   .lo-games { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }

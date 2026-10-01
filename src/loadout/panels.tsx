@@ -23,6 +23,7 @@ export function ProgrammingPanel({ data }: { data: LoadoutData }) {
           // Empty slot: the one statement about the stack that is true by construction.
           <li>This site: Vite · React · TypeScript · raw WebGL</li>
         )}
+        {data.motto && <li className="lo-code-comment">{`// ${data.motto}`}</li>}
         {forge && (
           <li className="lo-code-now">
             <span className="text-ink-400">Currently building</span>
@@ -114,7 +115,24 @@ function GameTile({ id, big, live, elapsed, data }: TileProps) {
           {live && <MatchBadge elapsed={elapsed} />}
         </p>
         <h4 className="lo-tile-name ui-label">{GAME_NAME[id]}</h4>
-        {id === 'cs2' && <Readouts rows={[[cs2.mode ?? 'RANK', cs2.rank], ['HOURS', cs2.hours], ['ROLE', cs2.role], ['MAP', cs2.map]]} />}
+        {id === 'cs2' && (
+          <>
+            <Readouts rows={[[cs2.mode ?? 'RANK', cs2.rank], ['PEAK', cs2.peak], ['FACEIT', cs2.faceit], ['HOURS', cs2.hours], ['ROLE', cs2.role], ['MAP', cs2.map]]} />
+            {cs2.source && (cs2.rank || cs2.faceit) && (
+              // Snapshot, not live: the date says so. Plain text on purpose (see Cs2Config.source).
+              <p className="lo-fine lo-source">VIA {cs2.source.label.toUpperCase()} · {cs2.source.asOf.toUpperCase()}</p>
+            )}
+            {data.steam && (
+              <p className="lo-links">
+                <a href={data.steam.url} target="_blank" rel="noopener noreferrer">
+                  Steam · LVL {data.steam.level}
+                  {data.steam.badges ? ` · ${data.steam.badges} badges` : ''}
+                  <IconArrowRight size={14} />
+                </a>
+              </p>
+            )}
+          </>
+        )}
         {id === 'warThunder' && (
           <>
             {warThunder.topBR && (

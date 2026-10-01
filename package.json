@@ -11,8 +11,8 @@
     "gen:data": "node scripts/gen-data.mjs",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
     "bundle": "vite build && vite build --ssr src/entry-server.tsx && node scripts/prerender.mjs && node scripts/qa/budget.mjs",
-    "build": "node scripts/gen-anime.mjs && node scripts/gen-data.mjs && npm run typecheck && npm run bundle",
-    "build:nocheck": "node scripts/gen-anime.mjs && node scripts/gen-data.mjs && npm run bundle",
+    "build": "node scripts/gen-anime.mjs && node scripts/gen-socials.mjs && node scripts/gen-data.mjs && npm run typecheck && npm run bundle",
+    "build:nocheck": "node scripts/gen-anime.mjs && node scripts/gen-socials.mjs && node scripts/gen-data.mjs && npm run bundle",
     "preview": "vite preview --strictPort",
     "gen:fonts": "node scripts/gen-fonts.mjs",
     "gen:assets": "node scripts/gen-assets.mjs",
@@ -27,7 +27,8 @@
     "roblox:fetch": "node scripts/roblox/fetch-roblox.mjs",
     "roblox:build": "node scripts/roblox/preprocess.mjs",
     "roblox:check": "node scripts/roblox/validate.mjs",
-    "roblox:squad": "node scripts/roblox/squad.mjs"
+    "roblox:squad": "node scripts/roblox/squad.mjs",
+    "gen:socials": "node scripts/gen-socials.mjs"
   },
   "dependencies": {
     "@fontsource-variable/martian-mono": "^5.3.0",
