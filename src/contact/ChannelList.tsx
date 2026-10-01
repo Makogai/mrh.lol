@@ -3,8 +3,7 @@ import { Reveal } from '../components/Reveal';
 import { IconArrowUpRight, IconGitHub, IconMail, IconRoblox, IconTwitch, IconX, IconYouTube } from '../components/icons';
 import { site } from '../config/site';
 import { cx } from '../lib/cx';
-import { PresenceBadge } from '../roblox/PresenceBadge';
-import { usePresence } from '../roblox/usePresence';
+import { StatusGlyph, useStatus } from '../status';
 
 interface Tile { key: string; label: string; handle: string; href: string; icon: ReactNode; external: boolean; /** Roblox only: shows the shared live status. */ presence?: boolean }
 
@@ -21,12 +20,16 @@ function tiles(): Tile[] {
   return out;
 }
 
-/** The Roblox tile's status: the same store as the player card (one fetch loop). Neutral/unknown renders nothing. */
+/** The Roblox tile's status, from the shared status store (one network loop). Unknown / unavailable renders nothing. */
 function TilePresence() {
-  const { presence, watchRef } = usePresence();
+  const r = useStatus().snapshot?.roblox;
+  if (!r) return null;
+  const word = r.state === 'in-game' ? (r.game ? r.game.name : 'In a game') : r.state === 'studio' ? 'In Studio' : r.state === 'online' ? 'Online' : 'Offline';
   return (
-    <span ref={watchRef} className="ml-auto flex min-w-0 items-center">
-      <PresenceBadge presence={presence} neutral={null} />
+    <span className="st-fade ml-auto flex h-4 min-w-0 items-center gap-2 font-mono text-xs uppercase leading-4 tracking-label text-ink-300">
+      <span className="sr-only">Roblox status: </span>
+      <StatusGlyph kind={r.state === 'offline' ? 'offline' : 'online'} size={10} />
+      <span className="max-w-[22ch] truncate">{word}</span>
     </span>
   );
 }
@@ -37,12 +40,12 @@ export function ChannelList({ className, stretch = false }: { className?: string
     <ul
       aria-label="Other ways to reach me"
       // auto-rows-fr + stretch lets the tiles fill the Discord card's height when the form is absent (xl, two columns).
-      className={cx('grid gap-4 md:grid-cols-2 xl:grid-cols-1', stretch && 'xl:h-full xl:auto-rows-fr', className)}
+      className={cx('grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-1', stretch && 'xl:h-full xl:auto-rows-fr', className)}
     >
       {list.map((t, i) => (
         // Reveal wraps the tile (not the other way round): its own transition would override the tile's hover transitions.
         // The Roblox tile spans both md columns (GitHub + Email above it already fill a row), so the 2-col grid isn't ragged.
-        <Reveal as="li" key={t.key} index={i + 1} className={cx('flex', t.presence && 'md:col-span-2 xl:col-span-1')}>
+        <Reveal as="li" key={t.key} index={i + 1} className={cx('flex min-w-0', t.presence && 'md:col-span-2 xl:col-span-1')}>
           <a
             href={t.href}
             {...(t.external ? { target: '_blank', rel: 'noopener noreferrer' } : null)}

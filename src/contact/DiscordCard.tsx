@@ -3,6 +3,7 @@ import { ButtonLink } from '../components/Button';
 import { IconDiscord } from '../components/icons';
 import { site } from '../config/site';
 import { cx } from '../lib/cx';
+import { StatusGlyph, useContactLine } from '../status';
 import { CopyButton, type CopyStatus } from './CopyButton';
 
 /** Decorative corner trace: two copper lines ending in pads. A copy sends an amber pulse down the top one (contact.css). */
@@ -32,6 +33,7 @@ export function DiscordCard({ className }: { className?: string }) {
   const handleRef = useRef<HTMLParagraphElement>(null);
   const altRef = useRef<HTMLSpanElement>(null);
   const [copy, setCopy] = useState<CopyStatus>('idle');
+  const line = useContactLine(); // null (loading / unknown / failure) = handle only, never an invented "Online"
 
   return (
     <div data-copy={copy} className={cx('ct-discord relative overflow-hidden rounded-card p-6 md:p-10', className)}>
@@ -49,6 +51,12 @@ export function DiscordCard({ className }: { className?: string }) {
       >
         {handle}
       </p>
+      {line && (
+        <p key={line.text} className="st-fade relative mt-3 flex items-center gap-2 text-sm text-ink-300">
+          <StatusGlyph kind={line.glyph} />
+          {line.text}
+        </p>
+      )}
       {altHandle && (
         // Labelled on purpose: this is a SECOND DISCORD account. Without the label it reads like the (similar) Roblox name.
         <div className="relative mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">

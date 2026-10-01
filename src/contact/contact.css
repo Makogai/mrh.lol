@@ -8,17 +8,18 @@
   }
 
   /* Discord card: teal hairline glow at rest (subtler than --shadow-glow-teal), full strength on hover/focus-within. */
+  /* Bot-theme surface (V2_DESIGN §2 COMMS): Discord's #2b2d31 with a LOCAL blurple accent used as colour only (hairline +
+     glow, never small text). The amber Copy button stays the one primary action. */
   .ct-discord {
     background:
-      radial-gradient(36rem 22rem at 100% 0%, rgb(62 224 208 / 0.08), transparent 62%),
-      radial-gradient(26rem 18rem at 0% 100%, rgb(255 194 71 / 0.05), transparent 66%),
-      var(--color-iron-900);
-    box-shadow: 0 0 0 1px rgb(62 224 208 / 0.14), 0 8px 48px -16px rgb(62 224 208 / 0.24);
+      radial-gradient(36rem 22rem at 100% 0%, rgb(88 101 242 / 0.14), transparent 62%),
+      #2b2d31;
+    box-shadow: 0 0 0 1px rgb(88 101 242 / 0.28), 0 8px 48px -16px rgb(88 101 242 / 0.35);
     transition: box-shadow var(--dur-base) var(--ease-out);
   }
   .ct-discord:hover,
   .ct-discord:focus-within {
-    box-shadow: var(--shadow-glow-teal);
+    box-shadow: 0 0 0 1px rgb(88 101 242 / 0.5), 0 12px 48px -12px rgb(88 101 242 / 0.5);
   }
 
   /* The form card: an iron card with a faint amber bloom top-right, mirroring the Discord card's teal. */
@@ -33,11 +34,11 @@
      down it. Only stroke-dashoffset animates (never a transform), so nothing can leave the card's bounds. */
   .ct-trace-base { stroke: rgb(238 242 251 / 0.1); }
   .ct-trace-pad {
-    fill: var(--color-iron-900);
+    fill: #2b2d31;
     stroke: rgb(238 242 251 / 0.18);
     transition: stroke var(--dur-base) var(--ease-out), fill var(--dur-base) var(--ease-out);
   }
-  .ct-discord:hover .ct-trace-pad { stroke: rgb(62 224 208 / 0.6); }
+  .ct-discord:hover .ct-trace-pad { stroke: rgb(88 101 242 / 0.8); }
   .ct-discord[data-copy="copied"] .ct-trace-pad { stroke: var(--color-amber-400); fill: rgb(255 194 71 / 0.25); }
   .ct-trace-pulse { stroke: var(--color-amber-400); stroke-dasharray: 0.14 2; stroke-dashoffset: 0.14; opacity: 0; }
   @media (prefers-reduced-motion: no-preference) {

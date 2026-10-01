@@ -120,3 +120,11 @@ npm run qa:lighthouse -- --runs 5   # 5x mobile + desktop against http://localho
 
 The user-defined network matters only for the presence proxy: on Docker's default bridge there is no `127.0.0.11`, so
 presence lookups can fail (the card then shows the neutral label).
+
+## 4. Status relay (second Coolify resource)
+
+Live Discord / Roblox / Steam status comes from `services/status` (own Dockerfile), served at `https://status.mrh.lol`.
+Steps, env vars and the Discord portal settings are in `services/status/README.md`. The site needs nothing but the default
+URL (override with the build variable `VITE_STATUS_URL`). nginx sets no CSP today, so there is no `connect-src` to extend; if
+one is added, allow `https://status.mrh.lol`. When the relay is down the site falls back to `/api/roblox-presence` for the
+Roblox row and shows "Status offline" elsewhere, so a relay outage never breaks the page.

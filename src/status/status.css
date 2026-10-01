@@ -1,0 +1,23 @@
+/* Status surfaces: the few rules utilities can't express. Namespaced st-, in @layer components so utilities still win.
+   Everything animated is opacity/transform (or a CSS-only bar), and switched off for reduced motion. */
+@layer components {
+  /* 160 ms text crossfade; the element is keyed on its text so a change remounts it. */
+  .st-fade { animation: st-fade var(--dur-fast, 160ms) var(--ease-out) both; }
+  @keyframes st-fade { from { opacity: 0; } to { opacity: 1; } }
+
+  /* LOADING: a hairline ring breathing at 1.2 s. */
+  .st-breathe { animation: st-breathe 1.2s ease-in-out infinite; }
+  @keyframes st-breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+  /* Spotify progress: 2 px CSS-only bar. Duration = endsAt - startedAt, negative delay = elapsed (set inline). */
+  .st-progress { transform-origin: left; animation: st-progress linear both; }
+  @keyframes st-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  /* Greyed values while STALE. */
+  .st-stale { opacity: 0.55; filter: saturate(0.4); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .st-fade, .st-breathe { animation: none; }
+    .st-progress { animation: none; transform: scaleX(0.5); }
+  }
+}

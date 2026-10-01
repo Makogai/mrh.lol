@@ -17,7 +17,7 @@ export function Contact() {
   return (
     <Section id={s.id} index={s.index} title={s.title} intro={site.contact.intro} className="ct-bloom">
       {/* base: stacked · md: Discord full width, channels in 2 columns, form full width · xl: 12-col, 5 + 6 */}
-      <div className="grid items-start gap-6 md:gap-8 xl:grid-cols-12 xl:gap-x-8">
+      <div className="grid grid-cols-1 items-start gap-6 md:gap-8 xl:grid-cols-12 xl:gap-x-8">
         {showForm ? (
           <>
             <div className="flex flex-col gap-6 md:gap-8 xl:col-span-5">

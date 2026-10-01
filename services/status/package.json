@@ -1,0 +1,10 @@
+{
+  "name": "mrh-status",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Live-status relay for mrh.lol: Discord presence + Roblox presence + Steam, served as JSON and SSE.",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node src/index.js" },
+  "dependencies": { "discord.js": "^14.16.0" }
+}
