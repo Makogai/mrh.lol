@@ -31,6 +31,7 @@ const index = fill(template, entry.renderHead(), entry.render());
 // The 404 is static: no hydration, so no module script and no module preload. Stylesheet and font preload stay.
 const notFoundBase = template
   .replace(/<script\b[^>]*\btype="module"[^>]*>\s*<\/script>\s*/g, '')
+  .replace(/<script\b[^>]*\bdata-entry-loader\b[^>]*>[\s\S]*?<\/script>\s*/g, '') // vite.config.ts defers the entry through this loader
   .replace(/<link\b[^>]*\brel="modulepreload"[^>]*>\s*/g, '');
 const notFound = fill(notFoundBase, entry.renderNotFoundHead(), entry.renderNotFound());
 

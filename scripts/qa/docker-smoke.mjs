@@ -114,7 +114,9 @@ try {
   ]) check(`header ${header}`, root.headers[header] === expected, root.headers[header]);
 
   // A fingerprinted asset: must be immutable and gzipped.
-  const jsPath = /(?:src|href)="(\/assets\/[^"]+\.js)"/.exec(html)?.[1];
+  // The entry is requested by the inline data-entry-loader after first paint (vite.config.ts), so its path appears as a
+  // JSON string there rather than in a src attribute.
+  const jsPath = /(?:src|href)="(\/assets\/[^"]+\.js)"/.exec(html)?.[1] ?? /data-entry-loader>[^<]*"(\/assets\/[^"]+\.js)"/.exec(html)?.[1];
   if (!jsPath) check('found a /assets/*.js reference in the HTML', false);
   else {
     const js = await get(jsPath, { 'Accept-Encoding': 'gzip' });
