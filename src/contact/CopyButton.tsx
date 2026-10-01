@@ -12,6 +12,9 @@ interface CopyButtonProps {
   /** Spoken (polite live region) once the copy succeeds. */
   copiedAnnouncement: string;
   onStatusChange?: (status: CopyStatus) => void;
+  /** `icon`: a 48 px ghost icon button for secondary handles. It needs `ariaLabel`, since it has no visible text. */
+  variant?: 'primary' | 'icon';
+  ariaLabel?: string;
 }
 
 const COPIED_MS = 2400; // long enough to notice, short enough that the button is useful again immediately
@@ -33,7 +36,7 @@ function selectContents(el: HTMLElement) {
  *   2. select the handle and document.execCommand('copy') (older browsers, http previews, blocked permissions),
  *   3. leave the handle selected and tell the visitor to press Ctrl+C / ⌘C.
  */
-export function CopyButton({ text, targetRef, copiedAnnouncement, onStatusChange }: CopyButtonProps) {
+export function CopyButton({ text, targetRef, copiedAnnouncement, onStatusChange, variant = 'primary', ariaLabel }: CopyButtonProps) {
   const [status, setStatus] = useState<CopyStatus>('idle');
   const [announcement, setAnnouncement] = useState('');
   const timer = useRef<number | undefined>(undefined);
@@ -75,6 +78,14 @@ export function CopyButton({ text, targetRef, copiedAnnouncement, onStatusChange
   };
 
   const copied = status === 'copied';
+  if (variant === 'icon') {
+    return (
+      <>
+        <Button variant="ghost" onClick={copy} aria-label={ariaLabel} className="w-12 px-0!" icon={copied ? <IconCheck className="text-teal-400" /> : <IconCopy />} />
+        <span role="status" aria-live="polite" className="sr-only">{announcement}</span>
+      </>
+    );
+  }
   return (
     <>
       <Button

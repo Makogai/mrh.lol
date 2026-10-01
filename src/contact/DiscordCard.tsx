@@ -30,6 +30,7 @@ function Trace() {
 export function DiscordCard({ className }: { className?: string }) {
   const { handle, altHandle, serverInvite } = site.contact.discord;
   const handleRef = useRef<HTMLParagraphElement>(null);
+  const altRef = useRef<HTMLSpanElement>(null);
   const [copy, setCopy] = useState<CopyStatus>('idle');
 
   return (
@@ -49,9 +50,18 @@ export function DiscordCard({ className }: { className?: string }) {
         {handle}
       </p>
       {altHandle && (
-        <p className="relative mt-4 font-mono text-sm text-ink-400">
-          also <span className="select-all text-ink-300">{altHandle}</span>
-        </p>
+        // Labelled on purpose: this is a SECOND DISCORD account. Without the label it reads like the (similar) Roblox name.
+        <div className="relative mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="font-mono text-xs text-ink-400">Second account</span>
+          <span ref={altRef} className="select-all font-mono text-sm text-ink-300">{altHandle}</span>
+          <CopyButton
+            variant="icon"
+            text={altHandle}
+            targetRef={altRef}
+            ariaLabel={`Copy second Discord handle ${altHandle}`}
+            copiedAnnouncement={`Second Discord handle ${altHandle} copied`}
+          />
+        </div>
       )}
 
       <div className="relative mt-8 flex flex-wrap items-center gap-4">
